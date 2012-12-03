@@ -69,7 +69,7 @@ void master(int numtasks, char* pathbooks) {
       fin.open(filepath.c_str());
       previousword = INIT_WORD;
       while (line)
-      getline(fin, line);
+	getline(fin, line);
       split(fields, line, ' ');      
       for (iterator it1 = fields.begin(); it1 < fields.end(); it1++) {
 	if (previousword == INIT_WORD) {
@@ -95,7 +95,6 @@ void master(int numtasks, char* pathbooks) {
 	  MPI_send();
 	  MPI_Request request;
 	  ierr = MPI_Isend(it2,count, MPI_CHAR,nextrank,rank, MPI_COMM_WORLD, request);
-
 	}
       }
       fin.close();
