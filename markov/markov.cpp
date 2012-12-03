@@ -50,26 +50,31 @@ void master(int numtasks, char* pathbooks) {
     cout << "Error(" << errno << ") opening " << dir << endl;
     return errno;
   }
-  else {
-    struct dirent *dirp;
-    struct stat filestat;
-    ifstream fin;
-    string line;
-    vector <string> fields;
-    vector<cell> routetable;
-    string previousword;
-    int nextrank;
+  else if (createMatix(dp)) {
+  }
+};
 
-    while (dirp = readdir(dp)) {
-      filepath = pathbooks + "/" + dirp->d_name;
+int createMatrix(DIR* dp) {
+  struct dirent *dirp;
+  struct stat filestat;
+  ifstream fin;
+  string line;
+  vector <string> fields;
+  vector<cell> routetable;
+  string previousword;
+  int nextrank;
 
-      if (stat(filepath.c_str(), &filestat)) continue;
-      if (S_ISDIR(filestat.st_mode)) continue;
+  while (dirp = readdir(dp)) {
+    filepath = pathbooks + "/" + dirp->d_name;
 
-      fin.open(filepath.c_str());
-      previousword = INIT_WORD;
-      while (line)
-	getline(fin, line);
+    //If not is a valid file continue.
+    if (stat(filepath.c_str(), &filestat)) continue;
+    if (S_ISDIR(filestat.st_mode)) continue;
+    
+    fin.open(filepath.c_str());
+    previousword = INIT_WORD;
+    getline(fin, line);
+    while (line) {
       split(fields, line, ' ');      
       for (iterator it1 = fields.begin(); it1 < fields.end(); it1++) {
 	if (previousword == INIT_WORD) {
@@ -78,8 +83,8 @@ void master(int numtasks, char* pathbooks) {
 	      *it2.prob++;
 	    }
 	    else {
-	      *it2.word = *it1;
-	      *it2.prob = 1;
+		*it2.word = *it1;
+		*it2.prob = 1;
 	    }
 	  }
 	  previousword = *it1;
@@ -91,16 +96,22 @@ void master(int numtasks, char* pathbooks) {
 	      ranknext = *it3.prob; 
 	    }
 	  }
-
+	  
 	  MPI_send();
 	  MPI_Request request;
 	  ierr = MPI_Isend(it2,count, MPI_CHAR,nextrank,rank, MPI_COMM_WORLD, request);
 	}
       }
-      fin.close();
+      getline(fin, line);
     }
-    closedir( dp );
+    fin.close();
   }
+  closedir( dp );
+};
+
+int sendMessage(char* buffer, int length, int rank) {
+  MPI_Request request;
+  return MPI_Isend(buffer, length, MPI_CHAR, rank, rank, MPI_COMM_WORLD, &request);
 }
 
 struct columns {
