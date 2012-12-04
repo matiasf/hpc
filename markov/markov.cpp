@@ -9,9 +9,11 @@
 
 #define MASTER_RANK 0
 #define BUFFER_MESSAGE 50
-#define STOP_CONSTRUCT "<stop-construct>"
-#define READY_TO_RUN "<ready-to-run>"
+#define "<stop-construct>"
+#define "<ready-to-run>"
 #define INIT_WORD "INIT"
+
+
 
 using namespace std;
 
@@ -22,7 +24,7 @@ struct cell {
   string word;
 }
 
-int main(int argc, char *argv[]) {zzxa
+int main(int argc, char *argv[]) {
   int rank, numtasks;
   char* pathbooks;
   MPI_Init(&argc, &argv);
@@ -35,7 +37,7 @@ int main(int argc, char *argv[]) {zzxa
     }
     else {
       pathbooks = argv[0];
-sdf    }
+    }
     master(numtasks, pathbooks);
   }
   else {
@@ -114,22 +116,81 @@ int sendMessage(char* buffer, int length, int rank) {
   return MPI_Isend(buffer, length, MPI_CHAR, rank, rank, MPI_COMM_WORLD, &request);
 }
 
+string receiveMessage() {
+	MPI_Recv(word, BUFFER_MESSAGE, MPI_CHAR, MPI_ANY_SOURCE,MPI_ANY_SOURCE, MPI_COMM_WORLD, &status);
+	return string(word); 
+}
+
 struct columns {
-  char* word;
+  string word;
   vector<cell> nextwords;
 };
 
 void slave(int rank) {
-  char* word;
-  boolean construct = true;
-  vector<columns> columns;
-  while (construct) {
-    MPI_Recv(word, BUFFER_MESSAGE, MPI_CHAR, MASTER_RANK, MASTER_RANK, MPI_COMM_WORLD, &status);
-    if (strcmp(word, STOP_CONSTRUCT) == 0) {
-      construct = false;
-    }
-    else {
-      
-    }
-  } 
+	char* word;
+	boolean construct = true;
+	vector<columns> columns;
+	while (construct) {
+		word = receiveMessage();
+		if (strcmp(word, STOP_CONSTRUCT) == 0) {
+			construct = false;	
+		}
+		else {
+			addWord(word,columns);
+		}
+	}
+
+	
+	while(){
+
+		message = receiveMessage();
+		
+		if (strcmp(word, BALANCE) == 0) {
+		}
+		else if (strcmp(word, THE_END) == 0) {
+		}
+		else {
+			readMessage(message,seqNum,word,bookNum);
+			cell = searchNextWord(word,vector);
+			masterMessage = createMessage(seqNum,word,bookNum);
+			slaveMessage  = createMessage(seqNum+1,word,bookNum);
+			sendMessage(masterMessage, masterMessage.length(), cell.value);
+			sendMessage(slaveMessage, slaveMessage.length(), MASTER_RANK);
+		}	
+	}
 }
+
+void addWord(word,columns) {
+	
+	notInWord1 = true;
+	notInWord2 = true;
+	readMessage(word,word1,word2);
+	for (iterator it1 = column.begin(); it1 < column.end(); it1++) {
+		if(word1.compare(*it1.word)==0) {
+			notInWord1 = false;
+			for(iterator it2 = nextwords.begin(); it2 < nextwords.end(); it2++) {
+				if(word2.compare(*it2.word)==0) {
+					*it2.value += 1;
+					notInWord2 = false;
+					break;
+				}
+			}		
+			if(notIn) {
+				cell c = cell();
+				c.
+				*it1.nextwords.push_back(new cell);
+			}
+			break;
+		}
+	}
+}
+
+string createMessage(seqNum,word,bookNum) {
+}
+
+void readMessage(message,seqNum,word,bookNum) {
+}
+
+cell searchNextWord(word,vector) {
+}
+
