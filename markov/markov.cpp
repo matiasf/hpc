@@ -15,14 +15,7 @@
 
 using namespace std;
 
-vector<string> initword;
-
-struct cell {
-  int value;
-  string word;
-}
-
-int main(int argc, char *argv[]) {zzxa
+int main(int argc, char *argv[]) {
   int rank, numtasks;
   char* pathbooks;
   MPI_Init(&argc, &argv);
@@ -35,35 +28,50 @@ int main(int argc, char *argv[]) {zzxa
     }
     else {
       pathbooks = argv[0];
-sdf    }
-    master(numtasks, pathbooks);
+    }
+    master(numtasks, pathbooks, argv[1]);
   }
   else {
     slave(rank);
   }
 }
 
-void master(int numtasks, char* pathbooks) {
+const string STOP_CONSTRUCT = String("<stop-construct>");
+const int NUMTASKs;
+const int NUMBOOKs;
+vector<cell> routetable;
+vector<cell> initword;
+
+struct cell {
+  int value;
+  string word;
+};
+ 
+void master(int ntasks, char* pathbooks, int nbooks) {
   DIR *dp;
+  NUMTASKs = ntasks;
+  NUMBOOKs = nbooks; 
   dp = opendir(dir.c_str());
   if (dp == NULL) {
     cout << "Error(" << errno << ") opening " << dir << endl;
     return errno;
   }
-  else if (createMatix(dp)) {
-  }
+  createMatix(dp);
+  calculateAndSync();
+  runBooks();
+  proccessBooks();
 };
 
-int createMatrix(DIR* dp) {
+void createMatrix(DIR* dp) {
   struct dirent *dirp;
   struct stat filestat;
   ifstream fin;
   string line;
   vector <string> fields;
-  vector<cell> routetable;
   string previousword;
-  int nextrank;
-
+  int nextrank = 1;
+  bool isIn;
+  cell tmpCell;
   while (dirp = readdir(dp)) {
     filepath = pathbooks + "/" + dirp->d_name;
 
@@ -78,40 +86,81 @@ int createMatrix(DIR* dp) {
       split(fields, line, ' ');      
       for (iterator it1 = fields.begin(); it1 < fields.end(); it1++) {
 	if (previousword == INIT_WORD) {
-	  for (iterator it2 = initword.begin(); it2< initword.end(); it2++) {
+	  //Add the world to the routetable of master.
+	  isIn = false;
+	  for (iterator it2 = initword.begin(); it2 < initword.end(); it2++) {
 	    if (*it2.word == *it1) {
-	      *it2.prob++;
-	    }
-	    else {
-		*it2.word = *it1;
-		*it2.prob = 1;
+	      *it2.value++;
+	      isIn = true;
+	      break;
 	    }
 	  }
-	  previousword = *it1;
+	  if (!isIn) {
+	    tmpCell = new cell();
+	    *tmpCell.value = 1;
+	    *tmpCell.word = *it1;
+	    initword.push_back(tmpCell);
+	  }
 	}
 	else {
-	  //Enviar palabra!
-	  for(iterator it3 = routetable.begin(); it3 < routable.end(); it3++) {
-	    if(*it3.word == *it1) {
-	      ranknext = *it3.prob; 
+	  //Send word to slave.
+	  isIn = false;
+	  for(iterator it2 = routetable.begin(); it2 < routable.end(); it2++) {
+	    if(*it2.word == previousword) {
+	      sendMessage(*it2.word ++ "¬" ++ *it1, *it2.value);
+	      isIn = true;
+	      break;
 	    }
 	  }
-	  
-	  MPI_send();
-	  MPI_Request request;
-	  ierr = MPI_Isend(it2,count, MPI_CHAR,nextrank,rank, MPI_COMM_WORLD, request);
+	  if (!isIn) {
+	    tmpCell = new cell();
+	    *tmpCell.value = nextrank;
+	    *tmpCell.word = previousword;
+	    sendMessage(previousword ++ "¬" ++ *it1, nextrank);
+	    nextrank = (nextrank++) % numtasks;
+	    nextrank = nextrank == 0 ? 1 : nextrank;
+	  }
 	}
+	previousword = *it1;	  
       }
       getline(fin, line);
     }
     fin.close();
+    sendMessage(previousword ++ "¬" ++ 
   }
-  closedir( dp );
+  closedir(dp);  
 };
 
-int sendMessage(char* buffer, int length, int rank) {
+void calculateAndSync() {
+  for (int i=1; i++; i <= NUMTASKs) {
+    sendMessage(STOP_CONSTRUCT, i);
+  }
+  int totalwords = 0;
+  for (iterator it = initword.begin(); it < initword.end(); it++) {
+    totalwords += *it.value;
+  }
+  for (iterator it = initword.begin(); it < initword.end(); it++) {
+    *it.value = *it.value / totalwords;
+  }
+  vector<cell> unsort = initwords;
+  vector<cell> sorted = Vector(unsort.size());
+  for (iterator it1 = unsort.begin(); it1 < unsort.end(); it1++) {
+    for (iterator it2 = sorted.begin(); it2 < sorted.end(); it2++) {
+      
+    }
+  }
+  MPI_Barrier(MPI_COMM_WORLD);
+}
+
+void runBooks() {
+  for(int i=0; i++; i < NUMBOOKs) {
+    
+  }
+}
+
+int sendMessage(string message, int rank) {
   MPI_Request request;
-  return MPI_Isend(buffer, length, MPI_CHAR, rank, rank, MPI_COMM_WORLD, &request);
+  return MPI_Isend(message.c_str(), message.size(), MPI_CHAR, rank, rank, MPI_COMM_WORLD, &request);
 }
 
 struct columns {
