@@ -1,3 +1,4 @@
+
 #include <dirent>
 #include <unistd>
 #include <string>
@@ -33,79 +34,15 @@ int main(int argc, char *argv[]) {
 const string STOP_CONSTRUCT = String("<stop-construct>");
 const int NUMTASKs;
 const int NUMBOOKs;
-vector<cell> routetable;
-vector<cell> initword;
+vector<routecell> routetable;
+vector<routecell> initword;
 
-struct columns {
+struct column {
   string word;
-  vector<cell> nextwords;
+  vector<routecell> nextwords;
 };
 
-void slave(int rank) {
-	char* word;
-	boolean construct = true;
-	vector<columns> columns;
-	while (construct) {
-		word = receiveMessage();
-		if (strcmp(word, STOP_CONSTRUCT) == 0) {
-			construct = false;	
-		}
-		else {
-			addWord(word,columns);
-		}
-	}
 
-	
-	while(){
 
-		message = receiveMessage();
-		
-		if (strcmp(word, BALANCE) == 0) {
-		}
-		else if (strcmp(word, THE_END) == 0) {
-		}
-		else {
-			readMessage(message,seqNum,word,bookNum);
-			cell = searchNextWord(word,vector);
-			masterMessage = createMessage(seqNum,word,bookNum);
-			slaveMessage  = createMessage(seqNum+1,word,bookNum);
-			sendMessage(masterMessage, masterMessage.length(), cell.value);
-			sendMessage(slaveMessage, slaveMessage.length(), MASTER_RANK);
-		}	
-	}
-}
 
-void addWord(word,columns) {
-	
-	notInWord1 = true;
-	notInWord2 = true;
-	readMessage(word,word1,word2);
-	for (iterator it1 = column.begin(); it1 < column.end(); it1++) {
-		if(word1.compare(*it1.word)==0) {
-			notInWord1 = false;
-			for(iterator it2 = nextwords.begin(); it2 < nextwords.end(); it2++) {
-				if(word2.compare(*it2.word)==0) {
-					*it2.value += 1;
-					notInWord2 = false;
-					break;
-				}
-			}		
-			if(notIn) {
-				cell c = cell();
-				c.
-				*it1.nextwords.push_back(new cell);
-			}
-			break;
-		}
-	}
-}
-
-string createMessage(seqNum,word,bookNum) {
-}
-
-void readMessage(message,seqNum,word,bookNum) {
-}
-
-cell searchNextWord(word,vector) {
-}
 
