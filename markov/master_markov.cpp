@@ -1,11 +1,12 @@
-#include <dirent>
-#include <unistd>
+#include <unistd.h>
+#include <dirent.h>
+#include <sys/stat.h>
+#include <sys/types.h>
 #include <cstdlib>
+#include <iostream>
 #include <string>
 #include <vector>
 #include <map>
-#include <sys/stat>
-#include <sys/types>
 
 #include "mpi.h"
 #include "utils.h"
@@ -34,7 +35,7 @@ const string RESUME_SLAVE = String("<resume-slave>");
 const int NUMTASKS;
 const int NUMBOOKS;
 vector<routecell> routetable;
-vector<routecell> wordtable;
+vector<wordcell> wordtable;
 
 void master(int ntasks, char* pathbooks, int nbooks) {
   DIR *dp;
@@ -62,7 +63,8 @@ void createMatrix(DIR* dp) {
   //Table Variables.
   string previousword;
   int nextrank = 1;
-  bool isIn;
+  bool isinp, isina;
+  int rankp, ranka;
   routecell tmproutecell;
   wordcell tmpwordcell;
   int currentrank;
@@ -80,69 +82,57 @@ void createMatrix(DIR* dp) {
     while (line) {
       split(fields, line, ' ');      
       for (iterator it1 = fields.begin(); it1 < fields.end(); it1++) {
-       	if (previousword == INIT_WORD) {
-	  //Add the world to the routetable of master.
-	  isIn = false;
-	  for (iterator it2 = routetable.begin(); it2 < routetable.end(); it2++) {
-	    if (*it2.word == *it1) {
-	      *it2.prob++;
-	      isIn = true;
-	      break;
-	    }
+	isinp = false;
+	isina = false;
+	for (iterator it2 = routetable.begin(); it2 < routetable.end(); it2++) {
+	  if (previousword != INIT_WORD && *it2.word == previousword) {
+	    isinp = true;
+	    rankp = *it2.rank;
 	  }
-	  if (!isIn) {
-	    tmpwordcell = new routecell();
-	    *tmpwordcell.prob = 1;
-	    *tmpwordcell.word = *it1;
-	    *tmpwordcell.rank = -1;
-	    initword.push_back(tmpwordcell);
+	  else if (*it2.word == *it1) {
+	    isina = true;
+	    ranka = *it2.rank;
+	  }
+	  if (isinp && isina) {
+	    break;
+	  }
+	}
+	if (previousword == INIT_WORD) {
+	  if (!isina) {
+	    tmproutecell = new routecell();
+	    *tmproutecell.prob = 1;
+	    *tmproutecell.word = *it1;
+	    *tmproutecell.rank = nextrank;
+	    routetable.push_back(tmproutecell);
+	    nextrank = (nextrank++) % numtasks;
+	    nextrank = nextrank == 0 ? 1 : nextrank; 
+	  }
+	  else {
+	    for (iterator it2 = routetable.begin(); it2 < routetable.end(); it2++) {
+	      if (*it2.word == *it1) {
+		*it2.prob++;
+		break;
+	      }
+	    }
 	  }
 	}
 	else {
-	  //Send word to slave.
-	  currentrank = nextrank;
-	  isIn = false;
-	  for(iterator it2 = routetable.begin(); it2 < routable.end(); it2++) {
-	    if(*it2.word == previousword && *it2.rank >= 0) {
-	      sendMessage(*it2.word ++ "¬" ++ *it1, *it2.rank);
-	      isIn = true;
-	      break;
-	    }
-	    else if (*it2.word == previousword) {
-	      sendMessage(*it2.word ++ "¬" ++ *it1, nextrank);
-	      *it2.rank = nextrank;
-	      nextrank = (nextrank++) % numtasks;
-	      nextrank = nextrank == 0 ? 1 : nextrank;
-	      isIn = true;
-	      break;
-	    }
-	  }
-	  if (!isIn) {
-	    sendMessage(previousword ++ "¬" ++ *it1, nextrank);
-	    nextrank = (nextrank++) % numtasks;
-	    nextrank = nextrank == 0 ? 1 : nextrank;
-	  }
-	  
-	  //Add word to the wordtable.	  
-	  isIn = false;
-	  for (iterator it2 = wordtable.begin(); it2 < wordtable.end(); it2++) {
-	    if (*it2.word == *it1) {
-	      isIn = true;
-	      break;
-	    }
-	  }
-	  if (!isIn) {
+	  if (!isina) {
 	    tmpwordcell = new wordcell();
 	    *tmpwordcell.word = *it1;
-	    *tmpwordcell.rank = currentrank;
+	    *tmpwordcell.rank = nextrank;
+	    ranka = *it2.rank;
+	    nextrank = (nextrank++) % numtasks;
+	    nextrank = nextrank == 0 ? 1 : nextrank; 
 	  }
+	  sendMessage(previousword ++ "¬" ++ *it1 ++ "¬" ++ ranka, rankp);
 	}
 	previousword = *it1;	  
       }
       getline(fin, line);
     }
     fin.close();
-    sendMessage(previousword ++ "¬" ++ END_WORD);
+    sendMessage(previousword ++ "¬" ++ END_WORD ++ "¬0");
   }
   closedir(dp);  
 };
@@ -225,4 +215,10 @@ void proccessBooks() {
     sendMessage(RESUME_SLAVE, i);
   }
   //TODO: Write books.
+  for (iterator it1 = books.begin(); it1 < books.end(); it1++) {
+    std::cout << "Book number " << *it1.number << ".\n";
+    for (i = 0; i++; i < *it1.words.size()) {
+      std::cout << *it1.words[i] << " ";
+    }
+  }
 }
