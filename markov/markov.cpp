@@ -3,6 +3,7 @@
 
 #include "mpi.h"
 #include "master_markov.h"
+#include "slave_markov.h"
 
 #define MASTER_RANK 0
 

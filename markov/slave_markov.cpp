@@ -10,11 +10,13 @@
 #include <vector>
 #include <map>
 #include "mpi.h"
-using namespace std;
+#include "utils.h"
 
 #define INIT_WORD "INIT";
 #define END_WORD "END";
 #define STOP_CONSTRUCT "STOP";
+
+using namespace std;
 
 struct routecell {
   string word;
@@ -27,7 +29,6 @@ struct column {
 	vector<routecell> nextWords;
 };
 
-
 vector<column> columns;
 
 void addWord(string word);
@@ -37,13 +38,6 @@ void readColumnMessage(string message,string &wordRequested,string &wordToGo,int
 routecell searchNextWord(string word);
 void addWordToColumn(vector<routecell> nextWords,string word, int rank);
 void calculateAndSyncSlave();
-
-string receiveMessage(){
-	return "";
-}
-
-void sendMessage(string masterMessage, int rank){
-}
 
 void slave(int rank) {
 	string message;
