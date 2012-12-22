@@ -17,8 +17,9 @@ void sendMessage(string message, int rank) {
 }
 
 string receiveMessage() {
-  string word;
+  char* word;
   MPI_Status status;
-  MPI_Recv(&word, 216, MPI_CHAR, MPI_ANY_SOURCE, MPI_ANY_SOURCE, MPI_COMM_WORLD, &status);
-  return word; 
+  MPI_Recv(word, 216, MPI_CHAR, MPI_ANY_SOURCE, MPI_ANY_SOURCE, MPI_COMM_WORLD, &status);
+  string result(word);
+  return result; 
 }

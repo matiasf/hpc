@@ -13,12 +13,11 @@
 #include "mpi.h"
 #include "utils.h"
 
-#define PATH_BOOKS "/tmp" 
 #define INIT_WORD "INIT";
 #define END_WORD "END";
 #define STOP_CONSTRUCT "<stop-construct>";
 #define RESUME_SLAVE "<resume-slave>";
-#define SEPARATOR "¬";
+#define SEPARATOR_CHAR "¬";
 
 using namespace std;
 
@@ -43,16 +42,21 @@ int NUMBOOKS;
 vector<routecell> routetable;
 vector<wordcell> wordtable;
 
-void createMatrix(DIR* dp) {
+//Constants.
+string INITWORD = INIT_WORD;
+string ENDWORD = END_WORD;
+string STOPCONSTRUCT = STOP_CONSTRUCT;
+string RESUMESLAVE = RESUME_SLAVE;
+string SEPARATOR = SEPARATOR_CHAR;
+
+void createMatrix(DIR* dp, string pathbegin) {
   //Parser Variables.
   struct dirent *dirp;
   struct stat filestat;
-  ifstream fin;
-  string line, filepath, pathbooks;
+  string line, filepath;
   vector <string> fields;
   char numstr[21]; //Note: Enough to hold all numbers up to 64-bits
   string convstr;
-  pathbooks = string(PATH_BOOKS);
 
   //Table Variables.
   string previousword;
@@ -62,78 +66,91 @@ void createMatrix(DIR* dp) {
   routecell* tmproutecell;
   wordcell* tmpwordcell;
   int currentrank;
-
+  
+  cout << "Master: Creating matrix....\n";
   while (dirp = readdir(dp)) {
-    filepath = pathbooks + "/" + string(dirp->d_name);
-    
+    cout << "Master: Check if is a valid book.\n";
     //If not is a valid file continue.
-    if (stat(filepath.c_str(), &filestat)) continue;
     if (S_ISDIR(filestat.st_mode)) continue;
-    
-    fin.open(filepath.c_str());
-    previousword = INIT_WORD;
-    getline(fin, line, ' ');
-    while (fin) {
-      for (vector<string>::iterator it1 = fields.begin(); it1 < fields.end(); it1++) {
-	for (vector<routecell>::iterator it2 = routetable.begin(); it2 < routetable.end(); it2++) {
-	  //FIXME: Can't use the constant INIT_WORD
-	  if ((*it2).word == previousword && previousword == "INIT") {
-	    isinp = true;
-	    rankp = (*it2).rank;
-	  }
-	  else if ((*it2).word == *it1) {
-	    isina = true;
-	    ranka = (*it2).rank;
-	  }
-	  if (isinp && isina) {
-	    break;
-	  }
+    if (string(dirp->d_name) == "." || string(dirp->d_name) == "..") continue;
+
+    filepath = pathbegin + "/" + string(dirp->d_name);   
+    cout << "Master: Reading book " << filepath << endl;
+    ifstream fin(filepath.c_str());
+    if (fin.is_open()) {
+      cout << "Master: The file is ok!" << endl;
+    }
+    else {
+      cout << "Master: Bad file" << endl; 
+    }
+    previousword = INITWORD;
+    while (!fin.eof()) {
+      getline(fin, line, ' ');
+      cout << "Master: Readed word " << line << endl;
+      for (vector<routecell>::iterator it2 = routetable.begin(); it2 < routetable.end(); it2++) {
+	//FIXME: Can't use the constant INIT_WORD
+	if ((*it2).word == previousword || previousword == INITWORD) {
+	  isinp = true;
+	  rankp = (*it2).rank;
 	}
-	if (previousword == "INIT") {
-	  if (!isina) {
-	    tmproutecell = (struct routecell *) malloc(sizeof(struct routecell));
-	    (*tmproutecell).prob = 1;
-	    (*tmproutecell).word = *it1;
-	    (*tmproutecell).rank = nextrank;
-	    routetable.push_back(*tmproutecell);
-	    nextrank = (nextrank++) % NUMTASKS;
-	    nextrank = nextrank == 0 ? 1 : nextrank; 
-	  }
-	  else {
-	    for (vector<routecell>::iterator it2 = routetable.begin(); it2 < routetable.end(); it2++) {
-	      if ((*it2).word == *it1) {
-		(*it2).prob++;
-		break;
-	      }
+	else if ((*it2).word == line) {
+	  isina = true;
+	  ranka = (*it2).rank;
+	}
+	if (isinp && isina) {
+	  break;
+	}
+      }
+      if (previousword == INITWORD) {
+	cout << "Master: First word of book" << endl; 
+	if (!isina) {
+	  tmproutecell = new routecell();
+	  (*tmproutecell).prob = 1;
+	  (*tmproutecell).word = line;
+	  (*tmproutecell).rank = nextrank;
+	  routetable.push_back(*tmproutecell);
+	  nextrank = (nextrank++) % NUMTASKS;
+	  nextrank = nextrank == 0 ? 1 : nextrank; 
+	  cout << "Master: New word " << line << endl;
+	}
+	else {
+	  for (vector<routecell>::iterator it2 = routetable.begin(); it2 < routetable.end(); it2++) {
+	    if ((*it2).word == line) {
+	      (*it2).prob++;
+	      cout << "Master: Know word " << line << " - Quantity " << (*it2).prob << endl;
+	      break;
 	    }
 	  }
 	}
-	else {
-	  if (!isina) {
-	    tmpwordcell = (struct wordcell *) malloc(sizeof(struct wordcell));
-	    (*tmpwordcell).word = *it1;
-	    (*tmpwordcell).rank = nextrank;
-	    ranka = (*tmpwordcell).rank;
-	    nextrank = (nextrank++) % NUMTASKS;
-	    nextrank = nextrank == 0 ? 1 : nextrank; 
-	  }
-	  sprintf(numstr, "%d", ranka);
-	  sendMessage(previousword + "¬" + (*it1) + "¬" + numstr, rankp);
-	}
-	previousword = *it1;	  
       }
-      getline(fin, line, ' ');
+      else {
+	if (!isina) {
+	  tmpwordcell = new wordcell();
+	  (*tmpwordcell).word = line;
+	  (*tmpwordcell).rank = nextrank;
+	  ranka = (*tmpwordcell).rank;
+	  wordtable.push_back(*tmpwordcell);
+	  nextrank = (nextrank++) % NUMTASKS;
+	  nextrank = nextrank == 0 ? 1 : nextrank;
+	}
+	sprintf(numstr, "%d", ranka);
+	cout << "Master: Sending word " << line << " to " << rankp << endl;
+	sendMessage(previousword + SEPARATOR + line + SEPARATOR + numstr, rankp);
+      }
+      previousword = line;	  
+      
     }
     fin.close();
-    sendMessage(previousword + "¬END¬0", rankp);
+    cout << "Master: Sending end of the book" << endl;
+    sendMessage(previousword + SEPARATOR + ENDWORD + SEPARATOR + "0", rankp);
   }
   closedir(dp);
-  cout << "Matrix ended.";
+  cout << "Master: Matrix ended.\n";
 };
 
 void calculateAndSync() {
   for (int i=1; i++; i <= NUMTASKS) {
-    sendMessage("<stop-construct>", i);
+    sendMessage(STOPCONSTRUCT, i);
   }
   int totalwords = 0;
   for (vector<routecell>::iterator it = routetable.begin(); it < routetable.end(); it++) {
@@ -169,8 +186,8 @@ void runBooks() {
     for(vector<routecell>::iterator it1 = routetable.begin(); it1 < routetable.end(); it1++) {
       if ((randinit = randinit - (*it1).prob) < 0) {
 	sprintf(numstr, "%d", i);
-	sendMessage((*it1).word + "¬" + numstr + "¬0", (*it1).rank);
-	sendMessage((*it1).word + "¬" + numstr + "¬0", 0);
+	sendMessage((*it1).word + SEPARATOR + numstr + SEPARATOR + "0", (*it1).rank);
+	sendMessage((*it1).word + SEPARATOR + numstr + SEPARATOR + "0", 0);
 	break;
       };      
     }
@@ -197,9 +214,9 @@ void proccessBooks() {
   while (endbooks < NUMBOOKS) {
     message = receiveMessage();
     //TODO: Fork to wait more messages and process.
-    pos1 = message.find("¬");
+    pos1 = message.find(SEPARATOR);
     word = message.substr(0, pos1-1);
-    pos2 = message.find("¬", pos1+1);
+    pos2 = message.find(SEPARATOR, pos1+1);
     booknum = message.substr(pos1+1, pos2-1);
     secnum = message.substr(pos2+1);
     if (word != "END") {
@@ -220,7 +237,7 @@ void proccessBooks() {
       delete sstream1;
     }
   }
-  string resume = RESUME_SLAVE;
+  string resume = RESUMESLAVE;
   for (int i1=1; i1++; i1 <= NUMTASKS) {
     sendMessage(resume, i1);
   }
@@ -242,7 +259,8 @@ void master(int ntasks, const char* pathbooks, int nbooks) {
     cout << "Error opening " << pathbooks << endl;
     return;
   }
-  createMatrix(dp);
+  string spath(pathbooks);
+  createMatrix(dp, spath);
   //  calculateAndSync();
   //runBooks();
   //proccessBooks();
