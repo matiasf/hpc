@@ -51,7 +51,7 @@ void slave(int rank) {
 
 	while (construct) {
 		message = receiveMessage();
-		if (message.compare("STOP") == 0) {
+		if (message.compare("<stop-construct>") == 0) {
 			construct = false;	
 		}
 		else {
@@ -65,7 +65,7 @@ void slave(int rank) {
 		if (message.compare("BALANCE") == 0) {
 
 		}
-		else if (message.compare("THE_END") == 0) {
+		else if (message.compare("<resume-slave>") == 0) {
 
 		}
 		else {
@@ -104,11 +104,17 @@ void addWord(string word) {
 		}
 	}
 	if(notInWord1) {
-		//TODO
-		column* c = (struct column *) malloc(sizeof(struct column));
+		column* c = new column();
 		(*c).word = word1;
 		columns.push_back(*c);
 		addWordToColumn(columns.back().nextWords,word2,rank);
+	}
+	cout << "Slave " <<rank<<" atendend word: "<<columns.back().word<<endl;
+
+	cout << "Slave " <<rank<<"  goes to : "<<endl;
+	column col = columns.back();
+	for(vector<routecell>::iterator it3 = col.nextWords.begin(); it3 < col.nextWords.end(); it3++) {
+		cout<<"word: "<<(*it3).word<<" - "<<"rank: "<<(*it3).rank<<"\t"; 
 	}
 }
 
@@ -179,7 +185,7 @@ routecell searchNextWord(string word) {
 }
 
 void addWordToColumn(vector<routecell> nextWords,string word, int rank) {
-	routecell* c = (struct routecell *) malloc(sizeof(struct routecell));;
+	routecell* c = new routecell();
 	(*c).word = word;
 	(*c).rank = rank;
 	(*c).prob = 1;
