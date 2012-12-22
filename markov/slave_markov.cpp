@@ -160,21 +160,25 @@ void readColumnMessage(string message,string &wordRequested,string &wordToGo,int
 	convertRank >> rank;
 }
 
-routecell randomWord(column col){
-	//TODO
-	return col.nextWords.front();
+routecell randomWord(vector<routecell> nextWords){
+	float randtmp;
+	float randinit = rand() / RAND_MAX;
+	for(vector<routecell>::iterator it = nextWords.begin(); it < nextWords.end(); it++) {
+		if ((randtmp = randinit - (*it).prob) < 0) {
+			return (*it);
+		};
+	}
 }
 
 routecell searchNextWord(string word) {
 	for (vector<column>::iterator it1 = columns.begin(); it1 < columns.end(); it1++) {
 		if(word.compare((*it1).word)==0) {
-			return randomWord(*it1);
+			return randomWord((*it1).nextWords);
 		}
 	}
 }
 
 void addWordToColumn(vector<routecell> nextWords,string word, int rank) {
-	//TODO
 	routecell* c = (struct routecell *) malloc(sizeof(struct routecell));;
 	(*c).word = word;
 	(*c).rank = rank;
