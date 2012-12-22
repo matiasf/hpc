@@ -50,7 +50,7 @@ void createMatrix(DIR* dp) {
   ifstream fin;
   string line, filepath, pathbooks;
   vector <string> fields;
-  char numstr[21]; // enough to hold all numbers up to 64-bits
+  char numstr[21]; //Note: Enough to hold all numbers up to 64-bits
   string convstr;
   pathbooks = string(PATH_BOOKS);
 
@@ -127,7 +127,8 @@ void createMatrix(DIR* dp) {
     fin.close();
     sendMessage(previousword + "¬END¬0", rankp);
   }
-  closedir(dp);  
+  closedir(dp);
+  cout << "Matrix ended.";
 };
 
 void calculateAndSync() {
@@ -162,12 +163,11 @@ void calculateAndSync() {
 
 void runBooks() {
   float randinit;
-  float randtmp;
-  char numstr[21]; // enough to hold all numbers up to 64-bits  
+  char numstr[21]; //Note: Enough to hold all numbers up to 64-bits  
   for(int i = 0; i++; i < NUMBOOKS) {
     randinit = rand() / RAND_MAX;
     for(vector<routecell>::iterator it1 = routetable.begin(); it1 < routetable.end(); it1++) {
-      if ((randtmp = randinit - (*it1).prob) < 0) {
+      if ((randinit = randinit - (*it1).prob) < 0) {
 	sprintf(numstr, "%d", i);
 	sendMessage((*it1).word + "¬" + numstr + "¬0", (*it1).rank);
 	sendMessage((*it1).word + "¬" + numstr + "¬0", 0);
@@ -233,7 +233,7 @@ void proccessBooks() {
   }
 };
 
-void master(int ntasks, char* pathbooks, int nbooks) {
+void master(int ntasks, const char* pathbooks, int nbooks) {
   DIR *dp;
   NUMTASKS = ntasks;
   NUMBOOKS = nbooks;
@@ -243,7 +243,7 @@ void master(int ntasks, char* pathbooks, int nbooks) {
     return;
   }
   createMatrix(dp);
-  calculateAndSync();
-  runBooks();
-  proccessBooks();
+  //  calculateAndSync();
+  //runBooks();
+  //proccessBooks();
 };

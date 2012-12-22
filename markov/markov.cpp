@@ -17,15 +17,13 @@ int main(int argc, char *argv[]) {
   MPI_Comm_size(MPI_COMM_WORLD, &numtasks);
   
   if (rank == MASTER_RANK) {
-    if (argv[0] == NULL) {
-      pathbooks = "./";
+    if (argv[1] == NULL) {
+      pathbooks = "/tmp/markov";
     }
     else {
       pathbooks = argv[0];
     }
-    char* cstr;
-    strstr(cstr, pathbooks.c_str());
-    master(numtasks, cstr, strtol(argv[1], NULL, 10));
+    master(numtasks, pathbooks.c_str(), argv[0] == NULL ? 1 : strtol(argv[0], NULL, 10));
   }
   else {
     slave(rank);
