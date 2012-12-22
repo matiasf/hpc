@@ -1,18 +1,17 @@
-
-#include <dirent>
-#include <unistd>
+#include <stdlib.h>
 #include <string>
-#include <vector>
-#include <sys/stat>
-#include <sys/types>
 
 #include "mpi.h"
+#include "master_markov.h"
+#include "slave_markov.h"
+
+#define MASTER_RANK 0
 
 using namespace std;
 
 int main(int argc, char *argv[]) {
   int rank, numtasks;
-  char* pathbooks;
+  string pathbooks;
   MPI_Init(&argc, &argv);
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
   MPI_Comm_size(MPI_COMM_WORLD, &numtasks);
@@ -24,25 +23,12 @@ int main(int argc, char *argv[]) {
     else {
       pathbooks = argv[0];
     }
-    master(numtasks, pathbooks, argv[1]);
+    char* cstr;
+    strstr(cstr, pathbooks.c_str());
+    master(numtasks, cstr, strtol(argv[1], NULL, 10));
   }
   else {
     slave(rank);
   }
 }
-
-const string STOP_CONSTRUCT = String("<stop-construct>");
-const int NUMTASKs;
-const int NUMBOOKs;
-vector<routecell> routetable;
-vector<routecell> initword;
-
-struct column {
-  string word;
-  vector<routecell> nextwords;
-};
-
-
-
-
 
