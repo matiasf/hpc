@@ -71,7 +71,7 @@ void createMatrix(DIR* dp, string pathbegin) {
   while (dirp = readdir(dp)) {
     cout << "Master: Check if is a valid book.\n";
     //If not is a valid file continue.
-    if (S_ISDIR(filestat.st_mode)) continue;
+    //    if (S_ISDIR(filestat.st_mode)) continue;
     if (string(dirp->d_name) == "." || string(dirp->d_name) == "..") continue;
 
     filepath = pathbegin + "/" + string(dirp->d_name);   
@@ -134,15 +134,15 @@ void createMatrix(DIR* dp, string pathbegin) {
 	  nextrank = nextrank == 0 ? 1 : nextrank;
 	}
 	sprintf(numstr, "%d", ranka);
-	cout << "Master: Sending word " << line << " to " << rankp << endl;
-	sendMessage(previousword + SEPARATOR + line + SEPARATOR + numstr, rankp);
+	cout << "Master: Sending " << (previousword + SEPARATOR + line + SEPARATOR + numstr) << endl;
+	sendMessage(previousword + SEPARATOR + line + SEPARATOR + numstr + "\0", rankp);
       }
       previousword = line;	  
       
     }
     fin.close();
-    cout << "Master: Sending end of the book" << endl;
-    sendMessage(previousword + SEPARATOR + ENDWORD + SEPARATOR + "0", rankp);
+    cout << "Master: Sending end of the book " << (previousword + SEPARATOR + ENDWORD + SEPARATOR + "0") << endl;
+    sendMessage(previousword + SEPARATOR + ENDWORD + SEPARATOR + "0\0", rankp);
   }
   closedir(dp);
   cout << "Master: Matrix ended.\n";
@@ -186,8 +186,8 @@ void runBooks() {
     for(vector<routecell>::iterator it1 = routetable.begin(); it1 < routetable.end(); it1++) {
       if ((randinit = randinit - (*it1).prob) < 0) {
 	sprintf(numstr, "%d", i);
-	sendMessage((*it1).word + SEPARATOR + numstr + SEPARATOR + "0", (*it1).rank);
-	sendMessage((*it1).word + SEPARATOR + numstr + SEPARATOR + "0", 0);
+	sendMessage((*it1).word + SEPARATOR + numstr + SEPARATOR + "0\0", (*it1).rank);
+	sendMessage((*it1).word + SEPARATOR + numstr + SEPARATOR + "0\0", 0);
 	break;
       };      
     }
@@ -261,7 +261,7 @@ void master(int ntasks, const char* pathbooks, int nbooks) {
   }
   string spath(pathbooks);
   createMatrix(dp, spath);
-  //  calculateAndSync();
+  //calculateAndSync();
   //runBooks();
   //proccessBooks();
 };

@@ -157,8 +157,8 @@ void readColumnMessage(string message,string &wordRequested,string &wordToGo,int
 	string rankStr;
 
 	pos1 = message.find("¬");
-	wordRequested = message.substr (0,pos1-1);
-	pos2 = message.find("¬",pos1+1);
+	wordRequested = message.substr(0,pos1);
+	pos2 = message.find("¬",pos1);
 	wordToGo = message.substr (pos1+1,pos2);
 	rankStr = message.substr (pos2+1);
 

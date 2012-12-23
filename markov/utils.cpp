@@ -1,8 +1,7 @@
 #include <string>
+#include <iostream>
 
 #include "mpi.h"
-
-#define BUFFER_MESSAGE 216;
 
 using namespace std;
 
@@ -13,13 +12,19 @@ struct split
 
 void sendMessage(string message, int rank) {
   MPI_Request request;
-  MPI_Isend(&message, message.size(), MPI_CHAR, rank, rank, MPI_COMM_WORLD, &request);
+  cout << "Utils: Message size to send is " << message.size() << endl;
+  char* tmpmessage; 
+  MPI_Isend((char*)message.c_str(), message.size(), MPI_CHAR, rank, rank, MPI_COMM_WORLD, &request);
 }
 
 string receiveMessage() {
-  char* word;
   MPI_Status status;
-  MPI_Recv(word, 216, MPI_CHAR, MPI_ANY_SOURCE, MPI_ANY_SOURCE, MPI_COMM_WORLD, &status);
+  int length;
+  MPI_Get_count(&status, MPI_CHAR, &length);
+  char word[216];
+  cout << "Utils: Message lenght to read " << length << endl;
+  MPI_Recv(&word, 216, MPI_CHAR, MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
+  cout << "Utils: Recived word " << word << endl;
   string result(word);
   return result; 
 }

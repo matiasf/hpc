@@ -26,10 +26,12 @@ int main(int argc, char *argv[]) {
     }
     cout << "Master: Created." << endl;
     master(numtasks, pathbooks.c_str(), argv[0] == NULL ? 1 : strtol(argv[0], NULL, 10));
+    int i;
+    while (true);
   }
   else {
     cout << "Slave: Created " << rank << endl;
-    //    slave(rank);
+    slave(rank);
   }
 }
 
