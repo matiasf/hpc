@@ -154,16 +154,18 @@ void readBookMessage(string message,string &word, int &bookNum, int &seqNum) {
 	convertSeq >> bookNum;
 }
 
-void readColumnMessage(string message,string &wordRequested,string &wordToGo,int &rank) {
+void readColumnMessage(string message, string &wordRequested, string &wordToGo, int &rank) {
 	size_t pos1;
 	size_t pos2;
 	string rankStr;
 
 	pos1 = message.find("¬");
-	wordRequested = message.substr(0,pos1);
-	pos2 = message.find("¬",pos1);
-	wordToGo = message.substr (pos1+1,pos2);
-	rankStr = message.substr (pos2+1);
+	wordRequested = message.substr(0, pos1);
+	pos2 = message.find("¬", pos1 + 1);
+	wordToGo = message.substr(pos1 + 1, pos2);
+	cout << "Slave: pos1 " << pos1 << " pos2 " << pos2 << endl;
+	cout << "Slave: Parsed word to go " << wordToGo << endl;
+	rankStr = message.substr(pos2 + 1);
 
 	stringstream convertRank(rankStr);
 	convertRank >> rank;
