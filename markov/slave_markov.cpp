@@ -86,7 +86,10 @@ void addWord(string word) {
 	string word2;
 	int rank;
 
-	readColumnMessage(word,word1,word2,rank);
+	readColumnMessage(word, word1, word2, rank);
+	cout << "Slave: Rank " << rank << endl;
+	cout << "Slave: Word 1 " << word1 << endl;
+	cout << "Slave: Word 2 " << word2 << endl;
 	for (vector<column>::iterator it1 = columns.begin(); it1 < columns.end(); it1++) {
 		if(word1.compare((*it1).word)==0) {
 			notInWord1 = false;

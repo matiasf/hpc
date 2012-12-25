@@ -86,6 +86,7 @@ void createMatrix(DIR* dp, string pathbegin) {
     previousword = INITWORD;
     while (!fin.eof()) {
       getline(fin, line, ' ');
+      line.erase(line.find_last_not_of(" \n\r\t")+1);
       cout << "Master: Readed word " << line << endl;
       for (vector<routecell>::iterator it2 = routetable.begin(); it2 < routetable.end(); it2++) {
 	//FIXME: Can't use the constant INIT_WORD
