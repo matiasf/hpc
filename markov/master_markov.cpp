@@ -70,8 +70,6 @@ void createMatrix(DIR* dp, string pathbegin) {
   cout << "Master: Creating matrix....\n";
   while (dirp = readdir(dp)) {
     cout << "Master: Check if is a valid book.\n";
-    //If not is a valid file continue.
-    //    if (S_ISDIR(filestat.st_mode)) continue;
     if (string(dirp->d_name) == "." || string(dirp->d_name) == "..") continue;
 
     filepath = pathbegin + "/" + string(dirp->d_name);   
@@ -134,15 +132,15 @@ void createMatrix(DIR* dp, string pathbegin) {
 	  nextrank = nextrank == 0 ? 1 : nextrank;
 	}
 	sprintf(numstr, "%d", ranka);
-	cout << "Master: Sending " << (previousword + SEPARATOR + line + SEPARATOR + numstr) << endl;
-	sendMessage(previousword + SEPARATOR + line + SEPARATOR + numstr + "\0", rankp);
+	cout << "Master: Sending " << (previousword + SEPARATOR + line + SEPARATOR + numstr + SEPARATOR) << endl;
+	sendMessage(previousword + SEPARATOR + line + SEPARATOR + numstr + SEPARATOR, rankp);
       }
       previousword = line;	  
       
     }
     fin.close();
-    cout << "Master: Sending end of the book " << (previousword + SEPARATOR + ENDWORD + SEPARATOR + "0") << endl;
-    sendMessage(previousword + SEPARATOR + ENDWORD + SEPARATOR + "0\0", rankp);
+    cout << "Master: Sending end of the book " << (previousword + SEPARATOR + ENDWORD + SEPARATOR + "0" + SEPARATOR) << endl;
+    sendMessage(previousword + SEPARATOR + ENDWORD + SEPARATOR + "0" + SEPARATOR, rankp);
   }
   closedir(dp);
   cout << "Master: Matrix ended.\n";
@@ -150,7 +148,7 @@ void createMatrix(DIR* dp, string pathbegin) {
 
 void calculateAndSync() {
   for (int i=1; i++; i <= NUMTASKS) {
-    sendMessage(STOPCONSTRUCT, i);
+    sendMessage(STOPCONSTRUCT + SEPARATOR, i);
   }
   int totalwords = 0;
   for (vector<routecell>::iterator it = routetable.begin(); it < routetable.end(); it++) {
@@ -186,8 +184,8 @@ void runBooks() {
     for(vector<routecell>::iterator it1 = routetable.begin(); it1 < routetable.end(); it1++) {
       if ((randinit = randinit - (*it1).prob) < 0) {
 	sprintf(numstr, "%d", i);
-	sendMessage((*it1).word + SEPARATOR + numstr + SEPARATOR + "0\0", (*it1).rank);
-	sendMessage((*it1).word + SEPARATOR + numstr + SEPARATOR + "0\0", 0);
+	sendMessage((*it1).word + SEPARATOR + numstr + SEPARATOR + "0" + SEPARATOR, (*it1).rank);
+	sendMessage((*it1).word + SEPARATOR + numstr + SEPARATOR + "0" + SEPARATOR, 0);
 	break;
       };      
     }
@@ -239,7 +237,7 @@ void proccessBooks() {
   }
   string resume = RESUMESLAVE;
   for (int i1=1; i1++; i1 <= NUMTASKS) {
-    sendMessage(resume, i1);
+    sendMessage(resume + SEPARATOR, i1);
   }
   //TODO: Write books.
   for (vector<book>::iterator it1 = books.begin(); it1 < books.end(); it1++) {
