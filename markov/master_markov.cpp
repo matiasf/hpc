@@ -89,7 +89,6 @@ void createMatrix(DIR* dp, string pathbegin) {
       line.erase(line.find_last_not_of(" \n\r\t")+1);
       cout << "Master: Readed word " << line << endl;
       for (vector<routecell>::iterator it2 = routetable.begin(); it2 < routetable.end(); it2++) {
-	//FIXME: Can't use the constant INIT_WORD
 	if ((*it2).word == previousword || previousword == INITWORD) {
 	  isinp = true;
 	  rankp = (*it2).rank;
@@ -110,8 +109,8 @@ void createMatrix(DIR* dp, string pathbegin) {
 	  (*tmproutecell).word = line;
 	  (*tmproutecell).rank = nextrank;
 	  routetable.push_back(*tmproutecell);
-	  nextrank = (nextrank++) % NUMTASKS;
-	  nextrank = nextrank == 0 ? 1 : nextrank; 
+	  nextrank = (nextrank+1) % NUMTASKS;
+	  nextrank = (nextrank == 0 ? 1 : nextrank); 
 	  cout << "Master: New word " << line << endl;
 	}
 	else {
@@ -131,7 +130,7 @@ void createMatrix(DIR* dp, string pathbegin) {
 	  (*tmpwordcell).rank = nextrank;
 	  ranka = (*tmpwordcell).rank;
 	  wordtable.push_back(*tmpwordcell);
-	  nextrank = (nextrank++) % NUMTASKS;
+	  nextrank = (nextrank+1) % NUMTASKS;
 	  nextrank = nextrank == 0 ? 1 : nextrank;
 	}
 	sprintf(numstr, "%d", ranka);
@@ -254,6 +253,7 @@ void proccessBooks() {
 void master(int ntasks, const char* pathbooks, int nbooks) {
   DIR *dp;
   NUMTASKS = ntasks;
+  cout << "Master: Number of tasks created " << ntasks << endl;
   NUMBOOKS = nbooks;
   dp = opendir(pathbooks);
   if (dp == NULL) {
