@@ -221,7 +221,7 @@ void proccessBooks() {
       endbooks++;
     }
     else {
-      sstream1 = new stringstream(secnum);
+      sstream1 = new stringstream(booknum);
       (*sstream1) >> pos1;      
       for (vector<book>::iterator it1 = books.begin(); it1 < books.end(); it1++) {
 	if ((*it1).number == pos1) {
