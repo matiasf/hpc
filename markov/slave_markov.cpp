@@ -36,7 +36,7 @@ string createMessage(string word,int bookNum, int seqNum);
 void readBookMessage(string message,string &word, int &bookNum, int &seqNum);
 void readColumnMessage(string message,string &wordRequested,string &wordToGo,int &rank) ;
 routecell searchNextWord(string word);
-void addWordToColumn(vector<routecell> nextWords,string word, int rank);
+routecell addWordToColumn(string word, int rank);
 void calculateAndSyncSlave();
 
 void slave(int rank) {
@@ -63,10 +63,10 @@ void slave(int rank) {
 	while(true){
 		message = receiveMessage();
 		if (message.compare("BALANCE") == 0) {
-
+			//TODO work overload
 		}
 		else if (message.compare("<resume-slave>") == 0) {
-
+			//TODO kill proces
 		}
 		else {
 			readBookMessage(message,word,bookNum,seqNum);
@@ -74,7 +74,7 @@ void slave(int rank) {
 			masterMessage = createMessage(word,bookNum,seqNum);
 			slaveMessage  = createMessage(word,bookNum,seqNum+1);
 			sendMessage(masterMessage, cell.rank);
-			sendMessage(slaveMessage, 0);
+			sendMessage(slaveMessage, 0);// 0 rank of slave
 		}	
 	}
 }
@@ -85,6 +85,7 @@ void addWord(string word) {
 	string word1;
 	string word2;
 	int rank;
+	routecell rc;
 
 	readColumnMessage(word, word1, word2, rank);
 	cout << "Slave: Rank " << rank << endl;
@@ -101,7 +102,9 @@ void addWord(string word) {
 				}
 			}		
 			if(notInWord2) {
-				addWordToColumn((*it1).nextWords,word2,rank);
+				rc = addWordToColumn(word2,rank);
+				((*it1).nextWords.push_back(rc));
+				
 			}
 			break;
 		}
@@ -110,15 +113,24 @@ void addWord(string word) {
 		column* c = new column();
 		(*c).word = word1;
 		columns.push_back(*c);
-		addWordToColumn(columns.back().nextWords,word2,rank);
+		rc = addWordToColumn(word2,rank);
+		columns.back().nextWords.push_back(rc);
 	}
-	cout << "Slave " <<rank<<" atendend word: "<<columns.back().word<<endl;
 
-	cout << "Slave " <<rank<<"  goes to : "<<endl;
-	column col = columns.back();
-	for(vector<routecell>::iterator it3 = col.nextWords.begin(); it3 < col.nextWords.end(); it3++) {
-		cout<<"word: "<<(*it3).word<<" - "<<"rank: "<<(*it3).rank<<"\t"; 
+	column col;
+	for (vector<column>::iterator it1 = columns.begin(); it1 < columns.end(); it1++) {
+		if(word1.compare((*it1).word)==0) {
+			col = (*it1);
+		}
 	}
+	cout << "Slave " <<rank<<" atendend word: "<<col.word<<endl;
+
+	cout << "Slave " <<rank<<"  goes to : ";
+	
+	for(vector<routecell>::iterator it3 = col.nextWords.begin(); it3 < col.nextWords.end(); it3++) {
+		cout<<"\tword: "<<(*it3).word<<" - "<<"rank: "<<(*it3).rank<<"\t"; 
+	}
+	cout << endl;
 }
 
 string createMessage(string word,int bookNum, int seqNum) {
@@ -157,16 +169,27 @@ void readBookMessage(string message,string &word, int &bookNum, int &seqNum) {
 void readColumnMessage(string message, string &wordRequested, string &wordToGo, int &rank) {
 	size_t pos1;
 	size_t pos2;
+	size_t pos3;
 	string rankStr;
 
+	//cout << endl;	
+	//cout << "Slave: readColumnMessage message : " << message << endl;
+	//cout << "Slave: readColumnMessage message length: " << message.length() << endl;
 	pos1 = message.find("¬");
 	wordRequested = message.substr(0, pos1);
+	//cout << "Slave: readColumnMessage wr: " << wordRequested << endl;
 	pos2 = message.find("¬", pos1 + 1);
-	wordToGo = message.substr(pos1 + 1, pos2);
-	cout << "Slave: pos1 " << pos1 << " pos2 " << pos2 << endl;
-	cout << "Slave: Parsed word to go " << wordToGo << endl;
-	rankStr = message.substr(pos2 + 1);
-
+	wordToGo = message.substr(pos1+1, pos2-(pos1));
+	//empty trash code
+	wordToGo = wordToGo.substr(1,wordToGo.length());
+	//cout << "Slave: readColumnMessage wtg: " << wordToGo << endl;
+	//cout << "Slave: pos1 " << pos1 << " pos2 " << pos2 << endl;
+	pos3 = message.find("¬", pos2 + 1);
+	rankStr = message.substr(pos2+1,pos3-(pos2));
+	//empty trash code
+	rankStr = rankStr.substr(1,rankStr.length());
+	//cout << "Slave: readColumnMessage rs " << rankStr << endl;
+	//cout << endl;
 	stringstream convertRank(rankStr);
 	convertRank >> rank;
 }
@@ -189,12 +212,12 @@ routecell searchNextWord(string word) {
 	}
 }
 
-void addWordToColumn(vector<routecell> nextWords,string word, int rank) {
+routecell addWordToColumn(string word, int rank) {
 	routecell* c = new routecell();
 	(*c).word = word;
 	(*c).rank = rank;
 	(*c).prob = 1;
-	nextWords.push_back(*c);
+	return *c;
 }
 
 void calculateAndSyncSlave() {
