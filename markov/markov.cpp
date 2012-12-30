@@ -1,4 +1,5 @@
 #include <stdlib.h>
+#include <string.h>
 #include <string>
 #include <iostream>
 
@@ -25,8 +26,7 @@ int main(int argc, char *argv[]) {
       pathbooks = argv[0];
     }
     cout << "Master: Created." << endl;
-    master(numtasks, pathbooks.c_str(), argv[0] == NULL ? 1 : strtol(argv[0], NULL, 10));
-    int i;
+    master(numtasks, pathbooks.c_str(), strlen(argv[0]) == 0 || strtol(argv[0], NULL, 10) == 0 ? 1 : strtol(argv[0], NULL, 10));
     while (true);
   }
   else {

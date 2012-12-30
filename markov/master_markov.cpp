@@ -147,7 +147,9 @@ void createMatrix(DIR* dp, string pathbegin) {
 };
 
 void calculateAndSync() {
-  for (int i=1; i++; i <= NUMTASKS) {
+  cout << "Master: Calculating and sync for " << NUMTASKS << " tasks" << endl;
+  for (int i=1; i < NUMTASKS; i++)  {
+    cout << "Master: Sending end construct to " << i << endl;
     sendMessage(STOPCONSTRUCT + SEPARATOR, i);
   }
   int totalwords = 0;
@@ -174,14 +176,18 @@ void calculateAndSync() {
   }
   routetable = sorted;
   MPI_Barrier(MPI_COMM_WORLD);
+  cout << "Master: Calculated probabilities and sync after barrier" << endl;
 };
 
 void runBooks() {
   float randinit;
   char numstr[21]; //Note: Enough to hold all numbers up to 64-bits  
-  for(int i = 0; i++; i < NUMBOOKS) {
+  cout << "Master: Start to create books " << NUMBOOKS << endl;
+  for(int i = 0; i < NUMBOOKS; i++) {
     randinit = rand() / RAND_MAX;
+    cout << "Master: Creating book number " << i << endl;
     for(vector<routecell>::iterator it1 = routetable.begin(); it1 < routetable.end(); it1++) {
+      cout << "Master: Checking word " << (*it1).word << endl;
       if ((randinit = randinit - (*it1).prob) < 0) {
 	sprintf(numstr, "%d", i);
 	sendMessage((*it1).word + SEPARATOR + numstr + SEPARATOR + "0" + SEPARATOR, (*it1).rank);
@@ -251,7 +257,7 @@ void proccessBooks() {
 void master(int ntasks, const char* pathbooks, int nbooks) {
   DIR *dp;
   NUMTASKS = ntasks;
-  cout << "Master: Number of tasks created " << ntasks << endl;
+  cout << "Master: Number of tasks created " << ntasks << ", and " << nbooks << " books." << endl;
   NUMBOOKS = nbooks;
   dp = opendir(pathbooks);
   if (dp == NULL) {
@@ -260,7 +266,7 @@ void master(int ntasks, const char* pathbooks, int nbooks) {
   }
   string spath(pathbooks);
   createMatrix(dp, spath);
-  //calculateAndSync();
-  //runBooks();
+  calculateAndSync();
+  runBooks();
   //proccessBooks();
 };

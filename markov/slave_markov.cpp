@@ -25,8 +25,8 @@ struct routecell {
 };
 
 struct column {
-	string word;
-	vector<routecell> nextWords;
+  string word;
+  vector<routecell> nextWords;
 };
 
 vector<column> columns;
@@ -51,7 +51,7 @@ void slave(int rank) {
 
 	while (construct) {
 		message = receiveMessage();
-		if (message.compare("<stop-construct>") == 0) {
+		if (message.substr(0, 16).compare("<stop-construct>") == 0) {
 			construct = false;	
 		}
 		else {
@@ -59,23 +59,25 @@ void slave(int rank) {
 		}
 	}
 	calculateAndSyncSlave();
-	
-	while(true){
-		message = receiveMessage();
-		if (message.compare("BALANCE") == 0) {
-			//TODO work overload
-		}
-		else if (message.compare("<resume-slave>") == 0) {
-			//TODO kill proces
-		}
-		else {
-			readBookMessage(message,word,bookNum,seqNum);
-			cell = searchNextWord(word);
-			masterMessage = createMessage(word,bookNum,seqNum);
-			slaveMessage  = createMessage(word,bookNum,seqNum+1);
-			sendMessage(masterMessage, cell.rank);
-			sendMessage(slaveMessage, 0);// 0 rank of slave
-		}	
+	cout << "Slave: Start to create books." << endl;
+	while(true) {      
+	  message = receiveMessage();
+	  if (message.compare("BALANCE") == 0) {
+	    //TODO work overload
+	  }
+	  else if (message.substr(0, 14).compare("<resume-slave>") == 0) {
+	    //TODO kill proces
+	    break;
+	  }
+	  else {
+	    cout << "Slave: Recive word " << word << endl;
+	    readBookMessage(message, word, bookNum, seqNum);
+	    cell = searchNextWord(word);
+	    masterMessage = createMessage(word, bookNum, seqNum);
+	    slaveMessage  = createMessage(word, bookNum, seqNum + 1);
+	    sendMessage(masterMessage, cell.rank);
+	    sendMessage(slaveMessage, 0);// 0 rank of slave
+	  }	
 	}
 }
 
@@ -123,20 +125,20 @@ void addWord(string word) {
 			col = (*it1);
 		}
 	}
-	cout << "Slave " <<rank<<" atendend word: "<<col.word<<endl;
+	cout << "Slave " << rank << " atendend word: " << col.word << endl;
 
-	cout << "Slave " <<rank<<"  goes to : ";
+	cout << "Slave " << rank << " goes to : ";
 	
 	for(vector<routecell>::iterator it3 = col.nextWords.begin(); it3 < col.nextWords.end(); it3++) {
-		cout<<"\tword: "<<(*it3).word<<" - "<<"rank: "<<(*it3).rank<<"\t"; 
+		cout<< " word: " << (*it3).word << " - " << "rank: " << (*it3).rank << "\t"; 
 	}
 	cout << endl;
 }
 
 string createMessage(string word,int bookNum, int seqNum) {
 	stringstream ss;
-   ss << bookNum;
-   string bookStr = ss.str();
+	ss << bookNum;
+	string bookStr = ss.str();
 	ss << seqNum;
 	string seqStr = ss.str();
 	string returnStr = word;
@@ -149,21 +151,21 @@ string createMessage(string word,int bookNum, int seqNum) {
 }
 
 void readBookMessage(string message,string &word, int &bookNum, int &seqNum) {
-	size_t pos1;
-	size_t pos2;
-	string seqStr;
-	string bookStr;
+  size_t pos1;
+  size_t pos2;
+  string seqStr;
+  string bookStr;
+  
+  pos1 = message.find("¬");
+  seqStr = message.substr(0, pos1 - 1);
+  pos2 = message.find("¬",pos1 + 1);
+  word = message.substr(pos1 + 1, pos2);
+  bookStr = message.substr(pos2 + 1);
 
-	pos1 = message.find("¬");
-	seqStr = message.substr (0,pos1-1);
-	pos2 = message.find("¬",pos1+1);
-	word = message.substr (pos1+1,pos2);
-	bookStr = message.substr (pos2+1);
-
-	stringstream convertSeq(seqStr);
-	convertSeq >> seqNum;
-	stringstream convertBook(bookStr);
-	convertSeq >> bookNum;
+  stringstream convertSeq(seqStr);
+  convertSeq >> seqNum;
+  stringstream convertBook(bookStr);
+  convertSeq >> bookNum;
 }
 
 void readColumnMessage(string message, string &wordRequested, string &wordToGo, int &rank) {
@@ -250,4 +252,5 @@ void calculateAndSyncSlave() {
 	
 	
 	MPI_Barrier(MPI_COMM_WORLD);
+	cout << "Slave: Calculated probabilities and sync after barrier" << endl;
 }
