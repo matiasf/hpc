@@ -27,7 +27,6 @@ int main(int argc, char *argv[]) {
     }
     cout << "Master: Created." << endl;
     master(numtasks, pathbooks.c_str(), strlen(argv[0]) == 0 || strtol(argv[0], NULL, 10) == 0 ? 1 : strtol(argv[0], NULL, 10));
-    while (true);
   }
   else {
     cout << "Slave: Created " << rank << endl;

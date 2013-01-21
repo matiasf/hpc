@@ -213,23 +213,33 @@ void proccessBooks() {
   string message;
   string word, booknum, secnum;
   istream *stream;
-  int pos1, pos2, endbooks = 0;
+  int pos1, pos2, pos3, endbooks = 0;
   stringstream *sstream1, *sstream2;
   while (endbooks < NUMBOOKS) {
     message = receiveMessage();
     //TODO: Fork to wait more messages and process.
     pos1 = message.find(SEPARATOR);
-    word = message.substr(0, pos1-1);
+    word = message.substr(0, pos1);
+    cout << "Master: Word recived " << word << endl;
     pos2 = message.find(SEPARATOR, pos1+1);
-    booknum = message.substr(pos1+1, pos2-1);
-    secnum = message.substr(pos2+1);
-    if (word != "END") {
+    booknum = message.substr(pos1+1, pos2-(pos1));
+    booknum = booknum.substr(1, booknum.length());
+    booknum = booknum.substr(0, booknum.length()-1);
+    cout << "Master: Num book " << booknum << endl;
+    pos3 = message.find(SEPARATOR, pos2+1);
+    secnum = message.substr(pos2+1, pos3-(pos2));
+    secnum = secnum.substr(1, secnum.length());
+    secnum = secnum.substr(0, secnum.length()-1);
+    cout << "Master: Sec num " << secnum << endl;
+    if (word == "END") {
       endbooks++;
     }
     else {
+      cout << "Master: Book message " << booknum << endl;
       sstream1 = new stringstream(booknum);
       (*sstream1) >> pos1;      
       for (vector<book>::iterator it1 = books.begin(); it1 < books.end(); it1++) {
+	cout << "Master: Checking with book " << (*it1).number << endl;
 	if ((*it1).number == pos1) {
 	  sstream2 = new stringstream(secnum);
 	  (*sstream2) >> pos2;
@@ -242,12 +252,12 @@ void proccessBooks() {
     }
   }
   string resume = RESUMESLAVE;
-  for (int i1=1; i1++; i1 <= NUMTASKS) {
+  for (int i1=1; i1 < NUMTASKS; i1++) {
     sendMessage(resume + SEPARATOR, i1);
   }
   //TODO: Write books.
   for (vector<book>::iterator it1 = books.begin(); it1 < books.end(); it1++) {
-    cout << "Book number " << (*it1).number << ".\n";
+    cout << "Master: Book number " << (*it1).number << endl;
     for (int i1 = 0; i1++; i1 < (*it1).words.size()) {
       cout << (*it1).words[i1] << " ";
     }
@@ -268,5 +278,6 @@ void master(int ntasks, const char* pathbooks, int nbooks) {
   createMatrix(dp, spath);
   calculateAndSync();
   runBooks();
-  //proccessBooks();
+  proccessBooks();
+  return;
 };

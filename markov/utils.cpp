@@ -19,10 +19,7 @@ void sendMessage(string message, int rank) {
 
 string receiveMessage() {
   MPI_Status status;
-  int length;
-  MPI_Get_count(&status, MPI_CHAR, &length);
   char word[216];
-  cout << "Utils: Message lenght to read " << length << endl;
   MPI_Recv(&word, 216, MPI_CHAR, MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
   cout << "Utils: Recived word " << word << endl;
   string result(word);
