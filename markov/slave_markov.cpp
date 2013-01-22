@@ -48,6 +48,7 @@ void slave(int rank) {
 	int seqNum;
 	bool construct = true;	
 	routecell cell;
+	srand(time(NULL));
 
 	while (construct) {
 		message = receiveMessage();
@@ -62,22 +63,22 @@ void slave(int rank) {
 	cout << "Slave: Start to create books." << endl;
 	while(true) {      
 	  message = receiveMessage();
-	  cout << "Slave: Comparation !!!" << message.substr(0, 14) << "!!!" << endl;
+	  //cout << "Slave: Comparation !!!" << message.substr(0, 14) << "!!!" << endl;
 	  if (message.compare("BALANCE") == 0) {
 	    //TODO work overload
 	  }
 	  else if (message.substr(0, 14).compare("<resume-slave>") == 0) {
-	    cout << "Slave: End slave." << endl;
+	    //cout << "Slave: End slave." << endl;
 	    break;
 	  }
 	  else {
-	    cout << "Slave: Recive word " << message << endl;
+	    //cout << "Slave: Recive word " << message << endl;
 	    readBookMessage(message, word, bookNum, seqNum);
 	    cell = searchNextWord(word);
 	    masterMessage = createMessage(word, bookNum, seqNum);
 	    slaveMessage  = createMessage(cell.word, bookNum, seqNum + 1);
-	    cout << "Slave: Master message - " << masterMessage << endl;
-	    cout << "Slave: Slave message - " << slaveMessage << endl;
+	    //cout << "Slave: Master message - " << masterMessage << endl;
+	    //cout << "Slave: Slave message - " << slaveMessage << endl;
 	    sendMessage(masterMessage, 0);
 	    sendMessage(slaveMessage, cell.rank);// 0 rank of slav
 	  }	
@@ -94,9 +95,9 @@ void slave(int rank) {
 	    routecell rc;
 
 	    readColumnMessage(word, word1, word2, rank);
-	    cout << "Slave: Rank " << rank << endl;
-	    cout << "Slave: Word 1 " << word1 << endl;
-	    cout << "Slave: Word 2 " << word2 << endl;
+	    //cout << "Slave: Rank " << rank << endl;
+	    //cout << "Slave: Word 1 " << word1 << endl;
+	    //cout << "Slave: Word 2 " << word2 << endl;
 	    for (vector<column>::iterator it1 = columns.begin(); it1 < columns.end(); it1++) {
 		    if(word1.compare((*it1).word)==0) {
 			    notInWord1 = false;
@@ -129,12 +130,12 @@ void slave(int rank) {
 			    col = (*it1);
 		    }
 	    }
-	    cout << "Slave " << rank << " atendend word: " << col.word << endl;
+	    //cout << "Slave " << rank << " atendend word: " << col.word << endl;
 
-	    cout << "Slave " << rank << " goes to : ";
+	    //cout << "Slave " << rank << " goes to : ";
 
 	    for(vector<routecell>::iterator it3 = col.nextWords.begin(); it3 < col.nextWords.end(); it3++) {
-		    cout<< " word: " << (*it3).word << " - " << "rank: " << (*it3).rank << "\t"; 
+	        cout<< " word: " << (*it3).word << " - " << "rank: " << (*it3).rank << "\t"; 
 	    }
 	    cout << endl;
     }
@@ -162,29 +163,29 @@ void slave(int rank) {
       string seqStr;
       string bookStr;
 
-      cout << "Slave: Read book message " << message << endl;
+      //cout << "Slave: Read book message " << message << endl;
       pos1 = message.find("¬");
       word = message.substr(0, pos1);
-      cout << "Slave: Read book word " << word << endl;
+      //cout << "Slave: Read book word " << word << endl;
       pos2 = message.find("¬", pos1+1);
       bookStr = message.substr(pos1+1, pos2-(pos1));
-      cout << "Slave: Read book bookStr " << bookStr << endl;
+      //cout << "Slave: Read book bookStr " << bookStr << endl;
       bookStr = bookStr.substr(1, bookStr.length());
       bookStr = bookStr.substr(0, bookStr.length()-1);
-      cout << "Slave: Read book bookStr " << bookStr << endl;
+      //cout << "Slave: Read book bookStr " << bookStr << endl;
       pos3 = message.find("¬",pos2+1);
       seqStr = message.substr(pos2+1,pos3-(pos2));
-      cout << "Slave: Read book seqStr " << seqStr << endl;
+      //cout << "Slave: Read book seqStr " << seqStr << endl;
       seqStr = seqStr.substr(1, seqStr.length());
       seqStr = seqStr.substr(0, seqStr.length()-1);      
-      cout << "Slave: Read book seqStr " << seqStr << endl;
+      //cout << "Slave: Read book seqStr " << seqStr << endl;
       //      cout << "Slave: pos1 - " << pos1 << " pos2 - " << pos2 << endl;
     
       stringstream convertSeq(seqStr);
       convertSeq >> seqNum;
       stringstream convertBook(bookStr);
       convertBook >> bookNum;
-      cout << "Slave: word - " << word << " seq - " << seqNum << " book - " << bookNum << endl;
+      //cout << "Slave: word - " << word << " seq - " << seqNum << " book - " << bookNum << endl;
     }
 
     void readColumnMessage(string message, string &wordRequested, string &wordToGo, int &rank) {
@@ -217,10 +218,12 @@ void slave(int rank) {
     }
 
 routecell randomWord(vector<routecell> nextWords){
-  float randtmp;
-  float randinit = rand() / RAND_MAX;
+  double randinit = (((double) rand()) / ((double)RAND_MAX));
+  cout << "Slave: Random number " << randinit << endl;
   for(vector<routecell>::iterator it = nextWords.begin(); it < nextWords.end(); it++) {
-    if ((randtmp = randinit - (*it).prob) < 0) {
+    cout << "Slave: Next rand " << randinit << endl;
+    if ((randinit = (randinit - (*it).prob)) < 0) {
+      cout << "Slave: Next word " << (*it).word << endl;
       return (*it);
     };
   }
@@ -271,7 +274,13 @@ void calculateAndSyncSlave() {
 		}
 		(*it1).nextWords = sorted;
 	}
-	
+	cout << "Slave: Printing columns" << endl;
+	for(vector<column>::iterator it1 = columns.begin(); it1 < columns.end(); it1++){
+	  cout << "word - " << (*it1).word << endl;
+	  for (vector<routecell>::iterator it2 = (*it1).nextWords.begin(); it2 < (*it1).nextWords.end(); it2++) {
+	    cout << "\tprob - " << (*it2).prob << "\tword - " << (*it2).word << endl;
+	  }
+	}	
 	
 	MPI_Barrier(MPI_COMM_WORLD);
 	cout << "Slave: Calculated probabilities and sync after barrier" << endl;
