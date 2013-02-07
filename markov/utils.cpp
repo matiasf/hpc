@@ -18,10 +18,21 @@ void sendMessage(string message, int rank) {
 }
 
 string receiveMessage() {
-  MPI_Status status;
   char word[216];
-  MPI_Recv(&word, 216, MPI_CHAR, MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
+  MPI_Recv(&word, 216, MPI_CHAR, MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
   //cout << "Utils: Recived word " << word << endl;
   string result(word);
   return result; 
+}
+
+string receiveMessageHurry(bool* toread) {
+  MPI_Iprobe(MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, toread, MPI_STATUS_IGNORE);
+  if (*toread) {
+    char word[216];
+    MPI_Recv(&word, 216, MPI_CHAR, MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+    //cout << "Utils: Recived word " << word << endl;
+    string result(word);
+    return result;
+  }
+  return NULL;
 }

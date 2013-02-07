@@ -36,9 +36,19 @@ struct wordcell {
 struct book {
   int number;
   int size;
-  int sec;
+  pthread_mutex_t mutex;
   bool end;
   map<int, string> words;
+};
+
+struct buffer {
+  int top;
+  int twork;
+  bool check;
+  vector<string> queuemessage;
+  pthread_mutex_t emptymutex;
+  pthread_mutex_t fullmutex;
+  pthread_mutex_t buffermutex;
 };
   
 int NUMTASKS;
@@ -56,8 +66,7 @@ string SEPARATOR = SEPARATOR_CHAR;
 //Global variables
 vector<book>* books;
 int inum = 0;
-bool eend = false;
-pthread_mutex_t endmutex = PTHREAD_MUTEX_INITIALIZER;
+buffer messagebuffer;
 
 void processMessage(string message, string* word, string* booknum, string* secnum) {
   int pos1, pos2, pos3;
@@ -76,68 +85,53 @@ void processMessage(string message, string* word, string* booknum, string* secnu
   //////////cerr << "Master: Sec num " << secnum << endl;
 }
 
-void *reciveThread(void *smessage) {
+void *reciveThread(void *voids) {
   int pos1, pos2;
-  string message = *(string*) smessage;
+  string message;
   string word, booknum, secnum;
   istream *stream;
   stringstream *sstream1, *sstream2;
-  processMessage(message, &word, &booknum, &secnum);
-  cerr << "Master - Thread: Message recived " << message << endl;
-  pthread_mutex_lock(&endmutex);
-  if (word == "END") {
-    sstream1 = new stringstream(booknum);
-    (*sstream1) >> pos1;
-    for (vector<book>::iterator it1 = (*books).begin(); it1 < (*books).end(); it1++) {
-      if ((*it1).number == pos1) {
-	sstream2 = new stringstream(secnum);
-	(*sstream2) >> pos2;
-	(*it1).size = pos2;
-	cerr << "Master: Compare size and sec " << (*it1).words.size() << " - " << (*it1).size << endl;
-	(*it1).end = (*it1).words.size() == (*it1).size;
-	delete sstream2;
-	break;
-      }
+  bool wakeupmaster = false;
+  while (true) {
+    pthread_mutex_lock(&(messagebuffer.buffermutex));
+    if (messagebuffer.queuemessage.size() == 0) {
+      pthread_mutex_unlock(&(messagebuffer.buffermutex));
+      pthread_mutex_lock(&(messagebuffer.emptymutex));
+      continue;
     }
-    delete sstream1;
-    eend = true;
-    for (vector<book>::iterator it1 = (*books).begin(); it1 < (*books).end(); it1++) {
-      if ((*it1).number == pos1) {
-	cerr << "Master - Thread: Compare size and sec " << (*it1).words.size() << " - " << (*it1).size << endl;
-	(*it1).end = (*it1).words.size() == (*it1).size;
-      }
-      eend = (*it1).end && eend;
+    if (messagebuffer.queuemessage.size() == messagebuffer.top) {
+      pthread_mutex_unlock(&(messagebuffer.fullxmutex));
     }
-  }
-  else {
+    message = messagebuffer.queuemessage.front();
+    messagebuffer.queemessage.erase(messagebuffer.queemessage.begin());
+    pthread_mutex_unlock(&(messagebuffer.buffermutex));
+    processMessage(message, &word, &booknum, &secnum);
     cerr << "Master - Thread: Book message " << booknum << endl;
     sstream1 = new stringstream(booknum);
     (*sstream1) >> pos1;
+    pthread_mutex_lock(&((*books).mutex));
     for (vector<book>::iterator it1 = (*books).begin(); it1 < (*books).end(); it1++) {
       if ((*it1).number == pos1) {
 	cerr << "Master - Thread: Checking with book " << (*it1).number << endl;
 	sstream2 = new stringstream(secnum);
 	(*sstream2) >> pos2;
+	if (word == "END") {
+	  (*it1).size = pos2;
+	}
 	(*it1).words.insert(pair<int, string>(pos2, word));
-	(*it1).sec = pos2 > (*it1).sec ? pos2 : (*it1).sec;
+	(*it1).end = (*it1).words.size() == (*it1).size;
 	delete sstream2;
 	break;
       }
     }
+    pthread_mutex_unlock(&((*books).mutex));
+    pthread_mutex_lock(&(messagebuffer.buffermutex));
+    messagebuffer.twork--;
+    messagebuffer.check = false;
+    pthread_mutex_unlock(&(messagebuffer.buffermutex));
     delete sstream1; 
-    eend = true;
-    for (vector<book>::iterator it1 = (*books).begin(); it1 < (*books).end(); it1++) {
-      if ((*it1).number == pos1) {
-	cerr << "Master - Thread: Compare size and sec " << (*it1).words.size() << " - " << (*it1).size << endl;
-	(*it1).end = (*it1).words.size() == (*it1).size;
-      }
-      eend = (*it1).end && eend;
-    }
     cerr << "Master - Thread: Full end - " << eend << endl;
   }
-  delete (string*)smessage;
-  pthread_mutex_unlock(&endmutex);
-  return NULL;
 }
 
 void createMatrix(DIR* dp, string pathbegin) {
@@ -308,31 +302,75 @@ void runBooks() {
 void proccessBooks() {
   //Init books
   int inum = 0;
+  int numcpu = sysconf( _SC_NPROCESSORS_ONLN );
+  bool eend = false;
+  vector<pthread_t*> poolthreds(0);
   cerr << "Master: Writing " << (*books).size() << " books" << endl;
   for (vector<book>::iterator it1 = (*books).begin(); it1 < (*books).end(); it1++) {
     cerr << "Master: Init book " << inum << endl;
     (*it1).number = inum;
+    (*it1).mutex = PTHREAD_MUTEX_INITIALIZER;
     (*it1).end = false;
+    (*it1).size = -1;
     inum++;
-  }  
+  }
+  messagebuffer.top = numcpu;
+  messagebuffer.twork = 0;
+  messagebuffer.check = true;
+  messagebuffer.buffermutex = PTHREAD_MUTEX_INITIALIZER;
+  messagebuffer.emptymutex = PTHREAD_MUTEX_INITIALIZER;
+  messagebuffer.fullmutex = PTHREAD_MUTEX_INITIALIZER;
+  pthread_mutex_lock(&(messagebuffer.emptymutex));
+  pthread_t* tid;
+  for (int i = 0; i < numcpu; i++) {
+    tid = new pthread_t(); 
+    pthread_create(tid, NULL, &reciveThread, NULL);
+    poolthreds.insert(tid);
+  }
   string line;
   string* message;
   string word, booknum, secnum;
-  pthread_t tid;
+  bool toread;
   cerr << "Master: Starting the process of thread creation" << endl;
   while (true) {
-    cerr << "Master: Waiting for message" << endl;
-    message = new string(receiveMessage());
-    cerr << "Master: Receive message " << *message << endl;
-    processMessage(*message, &word, &booknum, &secnum);
-    cerr << "Master: Creating thread" << endl;
-    if (pthread_create(&tid, NULL, &reciveThread, (void*)message)) {
-      cerr << "Master: ERROR - Message recived but bad thread creation." << endl;
-      exit(0);
+    pthread_mutex_lock(&(messagebuffer.buffermutex));
+    if (messagebuffer.buffermutex.size() == 0 && messagebuffer.twork == 0 && messagebuffer.check) {
+      pthread_mutex_unlock(&(messagebuffer.buffermutex));
+      message = new string(receiveMessage());
     }
-    pthread_join(tid, NULL);
-    if (eend)
-      break;
+    else if (messagebuffer.buffermutex.size() == 0 && messagebuffer.twork == 0) {
+      messagebuffer.check = true;
+      eend = true;
+      for (vector<book>::iterator it1 = (*books).begin(); it1 < (*books).end(); it1++) {
+	//cerr << "Master - Thread: Compare size and sec " << (*it1).words.size() << " - " << (*it1).size << endl;
+	(*it1).end = (*it1).words.size() == (*it1).size;
+	eend = (*it1).end && eend;
+      }
+      pthread_mutex_unlock(&(messagebuffer.buffermutex));
+      if (eend)
+	break;
+      else
+	continue;
+    }
+    else {
+      pthread_mutex_unlock(&(messagebuffer.buffermutex));
+      message = new string(receiveMessageHurry(&toread));
+      if (!(*toread)) {
+	continue;
+      }
+    }
+    cerr << "Master: Receive message " << *message << endl;
+    pthread_mutex_lock(&(messagebuffer.buffermutex));
+    messagebuffer.queuemessage.push_back(*message);
+    messagebuffer.twork++;
+    pthread_mutex_unlock(&(messagebuffer.emptymutex));
+    if (messagebuffer.queuemessage.size() == messagebuffer.queuemessage.top) {
+      pthread_mutex_unlock(&(messagebuffer.buffermutex));
+      pthread_mutex_lock(&(messagebuffer.fullmutex));
+    }
+    else {
+      pthread_mutex_unlock(&(messagebuffer.buffermutex));
+    }
   }
   cerr << "Master: Resume slaves" << endl;
   string resume = RESUMESLAVE;
