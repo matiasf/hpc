@@ -23,10 +23,10 @@ int main(int argc, char *argv[]) {
       pathbooks = "/tmp/markov";
     }
     else {
-      pathbooks = argv[0];
+      pathbooks = argv[1];
     }
     cout << "Master: Created." << endl;
-    master(numtasks, pathbooks.c_str(), strlen(argv[0]) == 0 || strtol(argv[0], NULL, 10) == 0 ? 1 : strtol(argv[0], NULL, 10));
+    master(numtasks, pathbooks.c_str(), 2);
   }
   else {
     cout << "Slave: Created " << rank << endl;

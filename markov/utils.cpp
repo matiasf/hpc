@@ -25,14 +25,16 @@ string receiveMessage() {
   return result; 
 }
 
-string receiveMessageHurry(bool* toread) {
+string receiveMessageHurry(int *toread) {
+  //cerr << "Utils: Checking channel ..." << endl;
   MPI_Iprobe(MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, toread, MPI_STATUS_IGNORE);
   if (*toread) {
+    //cerr << "Utils: We have a message" << endl;
     char word[216];
     MPI_Recv(&word, 216, MPI_CHAR, MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-    //cout << "Utils: Recived word " << word << endl;
     string result(word);
     return result;
   }
-  return NULL;
+  //cerr << "Utils: No message!" << endl;
+  return "";
 }

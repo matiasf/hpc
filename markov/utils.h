@@ -9,4 +9,6 @@ int sendMessage(string message, int rank);
 
 string receiveMessage();
 
+string receiveMessageHurry(int* toread);
+
 #endif

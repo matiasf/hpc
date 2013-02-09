@@ -82,7 +82,7 @@ void slave(int grank) {
 	    break;
 	  }
 	  else {
-	    //cerr << "Slave" << rank << ": Recive word " << message << endl;
+	    cerr << "Slave" << rank << ": Recive word " << message << endl;
 	    readBookMessage(message, word, bookNum, seqNum);
 	    ////cerr << "Slave" << rank << ": Read book message" << endl;
 	    cell = searchNextWord(word);
@@ -90,8 +90,8 @@ void slave(int grank) {
 	    masterMessage = createMessage(word, bookNum, seqNum);
 	    ////cerr << "Slave" << rank << ": Create Message with " << cell->word << endl;
 	    slaveMessage  = createMessage(cell->word, bookNum, seqNum + 1);
-	    //cerr << "Slave" << rank << ": Master message - " << masterMessage << " to " << 0 << endl;
-	    //cerr << "Slave" << rank << ": Slave message - " << slaveMessage << " to " << cell->rank << endl;
+	    cerr << "Slave" << rank << ": Master message - " << masterMessage << " to " << 0 << endl;
+	    cerr << "Slave" << rank << ": Slave message - " << slaveMessage << " to " << cell->rank << endl;
 	    sendMessage(masterMessage, 0);
 	    sendMessage(slaveMessage, cell->rank);// 0 rank of slav
 	  }	
@@ -160,21 +160,21 @@ void addWord(string word) {
   //////cerr << endl;
 }
 
-    string createMessage(string word, int bookNum, int seqNum) {
-	    stringstream ss;
-	    ss << bookNum;
-	    string bookStr = ss.str();
-	    ss << seqNum;
-	    string seqStr = ss.str();
-	    string returnStr = word;
-	    returnStr += "¬";
-	    returnStr += bookStr;
-	    returnStr += "¬";
-	    returnStr += seqStr;
-	    returnStr += "¬";
-
-	    return returnStr;
-    }
+string createMessage(string word, int bookNum, int seqNum) {
+  stringstream ss1;
+  ss1 << bookNum;
+  string bookStr = ss1.str();
+  stringstream ss2;
+  ss2<< seqNum;
+  string seqStr = ss2.str();
+  string returnStr = word;
+  returnStr += "¬";
+  returnStr += bookStr;
+  returnStr += "¬";
+  returnStr += seqStr;
+  returnStr += "¬";  
+  return returnStr;
+}
 
     void readBookMessage(string message,string &word, int &bookNum, int &seqNum) {
       size_t pos1;
@@ -183,23 +183,23 @@ void addWord(string word) {
       string seqStr;
       string bookStr;
 
-      //////////////////cerr << "Slave: Read book message " << message << endl;
+      cerr << "Slave: Read book message " << message << endl;
       pos1 = message.find("¬");
       word = message.substr(0, pos1);
-      //////////////////cerr << "Slave: Read book word " << word << endl;
+      cerr << "Slave: Read book word " << word << endl;
       pos2 = message.find("¬", pos1+1);
       bookStr = message.substr(pos1+1, pos2-(pos1));
-      //////////////////cerr << "Slave: Read book bookStr " << bookStr << endl;
+      cerr << "Slave: Read book bookStr " << bookStr << endl;
       bookStr = bookStr.substr(1, bookStr.length());
       bookStr = bookStr.substr(0, bookStr.length()-1);
-      //////////////////cerr << "Slave: Read book bookStr " << bookStr << endl;
+      cerr << "Slave: Read book bookStr " << bookStr << endl;
       pos3 = message.find("¬",pos2+1);
       seqStr = message.substr(pos2+1,pos3-(pos2));
-      //////////////////cerr << "Slave: Read book seqStr " << seqStr << endl;
+      cerr << "Slave: Read book seqStr " << seqStr << endl;
       seqStr = seqStr.substr(1, seqStr.length());
       seqStr = seqStr.substr(0, seqStr.length()-1);      
-      //////////////////cerr << "Slave: Read book seqStr " << seqStr << endl;
-      //      ////////////////cerr << "Slave: pos1 - " << pos1 << " pos2 - " << pos2 << endl;
+      cerr << "Slave: Read book seqStr " << seqStr << endl;
+      cerr << "Slave: pos1 - " << pos1 << " pos2 - " << pos2 << endl;
     
       stringstream convertSeq(seqStr);
       convertSeq >> seqNum;
