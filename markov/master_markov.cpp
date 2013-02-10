@@ -30,7 +30,15 @@ struct routecell {
 
 struct wordcell {
   string word;
-  int rank;
+  int count;
+};
+
+struct slavecell {
+	int rank;
+	int cores;
+	int count;
+	pthread_mutex_t mutex;
+	vector<wordcell> words;
 };
 
 struct book {
@@ -54,7 +62,7 @@ struct buffer {
 int NUMTASKS;
 int NUMBOOKS;
 vector<routecell> routetable;
-vector<wordcell> wordtable;
+vector<slavecell> slavetable;
 
 //Constants.
 string INITWORD = INIT_WORD;
@@ -68,8 +76,8 @@ vector<book>* books;
 int inum = 0;
 buffer messagebuffer;
 
-void processMessage(string message, string* word, string* booknum, string* secnum) {
-  int pos1, pos2, pos3;
+void processMessage(string message, string* word, string* booknum, string* secnum, string* strrank) {
+  int pos1, pos2, pos3, pos4;
   pos1 = message.find(SEPARATOR);
   *word = message.substr(0, pos1);
   ////////////cerr << "Master: Word recived " << word << endl;
@@ -82,13 +90,17 @@ void processMessage(string message, string* word, string* booknum, string* secnu
   *secnum = message.substr(pos2+1, pos3-(pos2));
   *secnum = (*secnum).substr(1, (*secnum).length());
   *secnum = (*secnum).substr(0, (*secnum).length()-1);
-  ////////////cerr << "Master: Sec num " << secnum << endl;
+	////////////cerr << "Master: Sec num " << secnum << endl;
+	pos4 = message.find(SEPARATOR, pos3+1);
+  *strrank = message.substr(pos3+1, pos4-(pos3));
+  *strrank = (*strrank).substr(1, (*strrank).length());
+  *strrank = (*strrank).substr(0, (*strrank).length()-1);
 }
 
 void *reciveThread(void *voids) {
-  int pos1, pos2;
+  int pos1, pos2, intrank;
   string message;
-  string word, booknum, secnum;
+  string word, booknum, secnum, strrank;
   istream *stream;
   stringstream *sstream1, *sstream2;
   bool wakeupmaster = false;
@@ -106,25 +118,47 @@ void *reciveThread(void *voids) {
     message = messagebuffer.queuemessage.front();
     messagebuffer.queuemessage.erase(messagebuffer.queuemessage.begin());
     pthread_mutex_unlock(&(messagebuffer.buffermutex));
-    processMessage(message, &word, &booknum, &secnum);
-    //cerr << "Master - Thread: Book message " << booknum << endl;
+    processMessage(message, &word, &booknum, &secnum,&strrank);
+    cerr << "Master - Thread: Book message " << message << endl;
     sstream1 = new stringstream(booknum);
     (*sstream1) >> pos1;
+		sstream2 = new stringstream(strrank);
+		(*sstream2) >> intrank;
+		//delete sstream1;
+		//delete sstream2;
+		
+		
+
+		for (vector<slavecell>::iterator it1 = slavetable.begin(); it1 < slavetable.end(); it1++) {
+			if(intrank = (*it1).rank){
+				pthread_mutex_lock(&((*it1).mutex));
+				(*it1).count++;
+				for(vector<wordcell>::iterator it2 = (*it1).words.begin(); it2 < (*it1).words.end(); it2++){
+					if(word == (*it2).word){
+						(*it2).count++;
+						break;
+					}
+				}
+				pthread_mutex_unlock(&((*it1).mutex));
+				break;
+			}
+		}
+
     for (vector<book>::iterator it1 = (*books).begin(); it1 < (*books).end(); it1++) {
       if ((*it1).number == pos1) {
-	pthread_mutex_lock(&((*it1).mutex));
-	//cerr << "Master - Thread: Checking with book " << (*it1).number << endl;
-	sstream2 = new stringstream(secnum);
-	(*sstream2) >> pos2;
-	if (word == "END") {
-	  //cerr << "Master - Thread: End! with size - " << pos2 << endl;
-	  (*it1).size = pos2 + 1;
-	}
-	(*it1).words.insert(pair<int, string>(pos2, word));
-	(*it1).end = (*it1).words.size() == (*it1).size;
-	delete sstream2;
-	pthread_mutex_unlock(&((*it1).mutex));
-	break;
+				pthread_mutex_lock(&((*it1).mutex));
+				//cerr << "Master - Thread: Checking with book " << (*it1).number << endl;
+				sstream2 = new stringstream(secnum);
+				(*sstream2) >> pos2;
+				if (word == "END") {
+					//cerr << "Master - Thread: End! with size - " << pos2 << endl;
+					(*it1).size = pos2 + 1;
+				}
+				(*it1).words.insert(pair<int, string>(pos2, word));
+				(*it1).end = (*it1).words.size() == (*it1).size;
+				delete sstream2;
+				pthread_mutex_unlock(&((*it1).mutex));
+				break;
       }
     }
     pthread_mutex_lock(&(messagebuffer.buffermutex));
@@ -147,11 +181,12 @@ void createMatrix(DIR* dp, string pathbegin) {
   //Table Variables.
   string previousword;
   int nextrank = 1;
-  bool isinp, isina;
+  bool isinp, isina, isins;
   int rankp, ranka;
   routecell* tmproutecell;
   wordcell* tmpwordcell;
-  int currentrank;
+	slavecell* tmpslavecell;  
+	int currentrank;
   
   //////////////cerr << "Master: Creating matrix....\n";
   while (dirp = readdir(dp)) {
@@ -175,76 +210,139 @@ void createMatrix(DIR* dp, string pathbegin) {
       line.erase(line.find_last_not_of(" \n\r\t")+1);
       //////////////cerr << "Master: Readed word " << line << endl;
       if (previousword == INITWORD) {
-	//////////////cerr << "Master: First word of book" << endl; 
-	for (vector<routecell>::iterator it2 = routetable.begin(); it2 < routetable.end(); it2++) {
-	  if ((*it2).word == line) {
-	    isina = true;
-	    ranka = (*it2).rank;
-	    break;
-	  }
-	}
-	if (!isina) {
-	  tmproutecell = new routecell();
-	  (*tmproutecell).prob = 1;
-	  (*tmproutecell).word = line;
-	  (*tmproutecell).rank = nextrank;
-	  routetable.push_back(*tmproutecell);
-	  tmpwordcell = new wordcell();
-	  (*tmpwordcell).word = line;
-	  (*tmpwordcell).rank = nextrank;
-	  wordtable.push_back(*tmpwordcell);
-	  nextrank = (nextrank+1) % NUMTASKS;
-	  nextrank = (nextrank == 0 ? 1 : nextrank); 
-	  ////////////cerr << "Master: New word to master " << (*tmpwordcell).word << " with rank " << (*tmpwordcell).rank << endl;
-	}
-	else {
-	  for (vector<routecell>::iterator it2 = routetable.begin(); it2 < routetable.end(); it2++) {
-	    if ((*it2).word == line) {
-	      (*it2).prob++;
-	      //////////////cerr << "Master: Know word " << line << " - Quantity " << (*it2).prob << endl;
-	      break;
-	    }
-	  }
-	}
+				for (vector<routecell>::iterator it2 = routetable.begin(); it2 < routetable.end(); it2++) {
+					if ((*it2).word == line) {
+						isina = true;
+						ranka = (*it2).rank;
+						break;
+					}
+				}
+				if (!isina) {
+					tmproutecell = new routecell();
+					(*tmproutecell).prob = 1;
+					(*tmproutecell).word = line;
+					(*tmproutecell).rank = nextrank;
+					routetable.push_back(*tmproutecell);
+					isins = false;					
+					for (vector<slavecell>::iterator it2 = slavetable.begin(); it2 < slavetable.end(); it2++) {
+						if ((*it2).rank == nextrank) {
+							isins = true;
+							tmpwordcell = new wordcell();
+							(*tmpwordcell).count = 0;
+							(*tmpwordcell).word = line;
+							(*it2).words.push_back(*tmpwordcell);
+							break;
+						}
+					}
+					if (!isins){
+						tmpslavecell = new slavecell();
+						(*tmpslavecell).cores = 0;
+						(*tmpslavecell).count = 0;
+						(*tmpslavecell).rank = nextrank;
+						tmpwordcell = new wordcell();
+						(*tmpwordcell).count = 0;
+						(*tmpwordcell).word = line;
+						(*tmpslavecell).words.push_back(*tmpwordcell);
+						slavetable.push_back(*tmpslavecell);
+					}					
+					nextrank = (nextrank+1) % NUMTASKS;
+					nextrank = (nextrank == 0 ? 1 : nextrank); 
+					////////////cerr << "Master: New word to master " << (*tmpwordcell).word << " with rank " << (*tmpwordcell).rank << endl;
+				}
+				else {
+					for (vector<routecell>::iterator it2 = routetable.begin(); it2 < routetable.end(); it2++) {
+						if ((*it2).word == line) {
+							(*it2).prob++;
+							//////////////cerr << "Master: Know word " << line << " - Quantity " << (*it2).prob << endl;
+							break;
+						}
+					}
+				}
       }
       else {
-	////////////cerr << "Master: Serching previousword " << previousword << " and actualword " << line << endl;
-	for (vector<wordcell>::iterator it2 = wordtable.begin(); it2 < wordtable.end(); it2++) {
-	  if ((*it2).word == previousword) {
-	    isinp = true;
-	    rankp = (*it2).rank;
-	    ////////////cerr << "Master: Rank p is " << rankp << endl;
-	  }
-	  else if ((*it2).word == line) {
-	    isina = true;
-	    ranka = (*it2).rank;
-	    ////////////cerr << "Master: Rank a is " << ranka << endl;
-	  }
-	  if (isinp && isina) {
-	    break;
-	  }
-	}
-	if (!isina) {
-	  tmpwordcell = new wordcell();
-	  (*tmpwordcell).word = line;
-	  (*tmpwordcell).rank = nextrank;
-	  ranka = (*tmpwordcell).rank;
-	  wordtable.push_back(*tmpwordcell);
-	  nextrank = (nextrank+1) % NUMTASKS;
-	  nextrank = nextrank == 0 ? 1 : nextrank;
-	  ////////////cerr << "Master: New word to slave " << (*tmpwordcell).word << " with rank " << (*tmpwordcell).rank << endl;
-	}
-	sprintf(numstr, "%d", ranka);
-	//////////cerr << "Master: Sending " << (previousword + SEPARATOR + line + SEPARATOR + numstr + SEPARATOR) << " to " << rankp << endl;
-	sendMessage(previousword + SEPARATOR + line + SEPARATOR + numstr + SEPARATOR, rankp);
-      }
+				////////////cerr << "Master: Serching previousword " << previousword << " and actualword " << line << endl;
+				for (vector<slavecell>::iterator it2 = slavetable.begin(); it2 < slavetable.end(); it2++) {
+					if (isinp && isina) {
+							break;
+					}
+					for (vector<wordcell>::iterator it3 = (*it2).words.begin(); it3 < (*it2).words.end(); it3++) {
+						if ((*it3).word == previousword) {
+							isinp = true;
+							rankp = (*it2).rank;
+							//cerr << "Master: Rank p is " << rankp << endl;
+						}
+						else if ((*it3).word == line) {
+							isina = true;
+							ranka = (*it2).rank;
+							//cerr << "Master: Rank a is " << ranka << endl;
+						}
+						if (isinp && isina) {
+							break;
+						}
+					}
+				}
+				if (!isina) {
+					isins = false;					
+					for (vector<slavecell>::iterator it2 = slavetable.begin(); it2 < slavetable.end(); it2++) {
+						if ((*it2).rank == nextrank) {
+							ranka = (*it2).rank;
+							isins = true;
+							tmpwordcell = new wordcell();
+							(*tmpwordcell).count = 0;
+							(*tmpwordcell).word = line;
+							(*it2).words.push_back(*tmpwordcell);
+							break;
+						}
+					}
+					if (!isins){
+						tmpslavecell = new slavecell();
+						pthread_mutex_init(&((*tmpslavecell).mutex), NULL);
+						(*tmpslavecell).cores = 0;
+						(*tmpslavecell).count = 0;
+						(*tmpslavecell).rank = nextrank;
+						ranka = (*tmpslavecell).rank;
+						tmpwordcell = new wordcell();
+						(*tmpwordcell).count = 0;
+						(*tmpwordcell).word = line;
+						(*tmpslavecell).words.push_back(*tmpwordcell);
+						slavetable.push_back(*tmpslavecell);
+					}					
+					nextrank = (nextrank+1) % NUMTASKS;
+					nextrank = (nextrank == 0 ? 1 : nextrank); 
+					//cerr << "Master: New word to master " << (*tmpwordcell).word << " with rank " << (*tmpwordcell).rank << endl;
+				}
+				sprintf(numstr, "%d", ranka);
+				//cerr << "Master: Sending " << (previousword + SEPARATOR + line + SEPARATOR + numstr + SEPARATOR) << " to " << rankp << endl;
+				sendMessage(previousword + SEPARATOR + line + SEPARATOR + numstr + SEPARATOR, rankp);
+			}
       previousword = line;	  
     }
     fin.close();
-    //////////cerr << "Master: Sending end of the book " << (previousword + SEPARATOR + ENDWORD + SEPARATOR + "0" + SEPARATOR) << " to " << rankp << endl;
+    //////////cerr << "Master: Sending end of the book " << (previousword + SEPARATOR + ENDWORD + SEPARATOR + "0" + SEPARATOR) 
+		//<< " to " << rankp << endl;
     sendMessage(previousword + SEPARATOR + ENDWORD + SEPARATOR + "0" + SEPARATOR, ranka);
   }
   closedir(dp);
+
+	string coremessage,corestr;
+	size_t pos1;
+	for(vector<slavecell>::iterator it2 = slavetable.begin(); it2 < slavetable.end(); it2++){
+		sendMessage("<get-cores>",(*it2).rank);
+		coremessage = receiveMessage();
+		//cerr << "Master core message" << coremessage << endl;
+		pos1 = coremessage.find("¬");
+    corestr = coremessage.substr(0, pos1);
+		stringstream convertcore(corestr);
+    convertcore >> (*it2).cores;
+		//cerr << "Master - rank: " << (*it2).rank <<" - cores:"<< (*it2).cores << endl;
+		//cerr <<"\t words: ";
+		//for(vector<wordcell>::iterator it3 = (*it2).words.begin(); it3 < (*it2).words.end(); it3++){
+		//	cerr << (*it3).word<<", ";
+		//}
+		//cerr <<"END slavetable"<< endl;
+		
+	}
+	
   //////////////cerr << "Master: Matrix ended.\n";
 };
 
@@ -290,26 +388,27 @@ void runBooks() {
     ////////////cerr << "Master: Creating book number " << i << endl;
     for(vector<routecell>::iterator it1 = routetable.begin(); it1 < routetable.end(); it1++) {
       if ((randinit = randinit - (*it1).prob) < 0) {
-	sprintf(numstr, "%d", i);
-	////////////cerr << "Master: Sending " << (*it1).word << " to " << (*it1).rank << endl;
-	sendMessage((*it1).word + SEPARATOR + numstr + SEPARATOR + "0" + SEPARATOR, (*it1).rank);
-	sendMessage((*it1).word + SEPARATOR + numstr + SEPARATOR + "0" + SEPARATOR, 0);
-	break;
+				sprintf(numstr, "%d", i);
+				cerr << "Master: Sending " << (*it1).word << " to " << (*it1).rank << endl;
+				sendMessage((*it1).word + SEPARATOR + numstr + SEPARATOR + "0" + SEPARATOR, (*it1).rank);
+				sendMessage((*it1).word + SEPARATOR + numstr + SEPARATOR + "0" + SEPARATOR + "0" + SEPARATOR, 0);
+				break;
       };      
     }
-  } 
+  }
+	cerr << "Master: End run books " << endl;
 };
 
 void proccessBooks() {
   //Init books
   int inum = 0;
   int numcpu = sysconf( _SC_NPROCESSORS_ONLN );
-  //cerr << "Master: The numbers of cores is " << numcpu << endl;
+  cerr << "Master: The numbers of cores is " << numcpu << endl;
   bool eend = false;
   vector<pthread_t*> poolthreds(0);
-  //cerr << "Master: Writing " << (*books).size() << " books" << endl;
+  cerr << "Master: Writing " << (*books).size() << " books" << endl;
   for (vector<book>::iterator it1 = (*books).begin(); it1 < (*books).end(); it1++) {
-    //cerr << "Master: Init book " << inum << endl;
+    cerr << "Master: Init book " << inum << endl;
     (*it1).number = inum;
     pthread_mutex_init(&((*it1).mutex), NULL);
     (*it1).end = false;
@@ -414,7 +513,7 @@ void master(int ntasks, const char* pathbooks, int nbooks) {
   srand(time(NULL));
   createMatrix(dp, spath);
   calculateAndSync();
-  ////////cerr << "Master: Start to run books." << endl;
+  cerr << "Master: Start to run books." << endl;
   //  for (vector<routecell>::iterator it2 = routetable.begin(); it2 < routetable.end(); it2++) {
   //    ////////////cerr << "\tprob - " << (*it2).prob << "\tword - " << (*it2).word << "\trank - " << (*it2).rank << endl;
   //  }
