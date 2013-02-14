@@ -139,8 +139,7 @@ void slave(int grank) {
 			////cerr << "Slave " << rank << ": sending message" << endl;
 			if(bufferout.queuemessage.size() == bufferout.top){
 				pthread_mutex_unlock(&(bufferout.fullmutex));
-			}
-			
+			}			
 			slaveMessage = bufferout.queuemessage.front().slaveMessage;
 			masterMessage = bufferout.queuemessage.front().masterMessage;
 			slaveRank = bufferout.queuemessage.front().slaveRank;
@@ -159,35 +158,40 @@ void slave(int grank) {
 				sendMessage(masterMessage, 0);
 				sendMessage(slaveMessage, slaveRank);// 0 rank of slave
 			}
-			continue;
-			
+			continue;	
 		}
 		pthread_mutex_unlock(&(bufferout.buffermutex));
 
-		pthread_mutex_lock(&(bufferin.buffermutex));
 		pthread_mutex_lock(&(tworkmutex));
-
+		pthread_mutex_lock(&(bufferin.buffermutex));
 		if(bufferin.queuemessage.size() == 0 && twork == 0){
 			//cerr << "Slave - " << rank << ": Waiting for messages." << endl;
-			pthread_mutex_unlock(&(tworkmutex));
 			pthread_mutex_unlock(&(bufferin.buffermutex));
+			pthread_mutex_unlock(&(tworkmutex));
 			message = receiveMessage();
 		}
     else if (bufferin.queuemessage.size() == bufferin.top) {
 			//cerr << "Slave - " << rank << ": Buffer is full, waiting for threads to end." << endl;
+			pthread_mutex_unlock(&(bufferin.buffermutex));
 			pthread_mutex_unlock(&(tworkmutex));
-    	pthread_mutex_unlock(&(bufferin.buffermutex));
     	pthread_mutex_lock(&(bufferin.fullmutex));
 			continue;
     }
 		else{
 			//cerr << "Slave - " << rank << ": Checking for message while buffer is not full" << endl;
-			pthread_mutex_unlock(&(tworkmutex));
 			pthread_mutex_unlock(&(bufferin.buffermutex));
+			pthread_mutex_unlock(&(tworkmutex));
 			message = receiveMessageHurry(&toread);
-		  if(!toread){
-				//cerr << "Slave - " << rank << ": Not messages to recive." << endl;
-				continue;
+		  if(!toread) {
+				pthread_mutex_lock(&(tworkmutex));//FIXME Esto es para poder colocar la bandera que dice que estoy esperando para que terimnene de tabajar
+				if (twork == 0) {
+					pthread_mutex_unlock(&(tworkmutex));
+					continue;
+				}
+				else {
+					pthread_mutex_unlock(&(tworkmutex));
+					pthread_mutex_lock(&(waitingworkmutex));
+				}
 			}
 		}      
 	  //cerr << "Slave - " << rank << ": Recived message " << message << endl;
