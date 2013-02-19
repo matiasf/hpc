@@ -26,7 +26,7 @@ int main(int argc, char *argv[]) {
       pathbooks = argv[1];
     }
     cout << "Master: Created." << endl;
-    master(numtasks, pathbooks.c_str(), 10);
+    master(numtasks, pathbooks.c_str(), 1000);
   }
   else {
     cout << "Slave: Created " << rank << endl;

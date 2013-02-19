@@ -12,9 +12,14 @@ struct split
 
 void sendMessage(string message, int rank) {
   MPI_Request request;
-  //cout << "Utils: Message size to send is " << message.size() << endl;
-  char* tmpmessage; 
-  MPI_Isend((char*)message.c_str(), message.size(), MPI_CHAR, rank, rank, MPI_COMM_WORLD, &request);
+	int size;
+	MPI_Pack_size(message.size(), MPI_CHAR, MPI_COMM_WORLD, &size);
+	void* buf = operator new(size + MPI_BSEND_OVERHEAD);
+	MPI_Buffer_attach(buf, size + MPI_BSEND_OVERHEAD);
+  //cout << "Utils: Message size to send is " << message.size() << endl; 
+  MPI_Bsend((char*)message.c_str(), message.size(), MPI_CHAR, rank, 1, MPI_COMM_WORLD);
+	MPI_Buffer_detach(&buf, &size);
+	operator delete(buf);
 }
 
 string receiveMessage() {
